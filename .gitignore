@@ -9,7 +9,8 @@ tests/**/*.js.map
 vite.config.js
 vite.config.d.ts
 *.tsbuildinfo
-.claude/
+.claude/settings.json
+.claude/settings.local.json
 out/
 .vite/
 coverage/

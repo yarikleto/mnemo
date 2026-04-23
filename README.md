@@ -135,7 +135,3 @@ src/
   - Linux — `~/.config/Mnemo/`
 
 All writes are atomic (temp file + rename), so a crash mid-write won't corrupt state.
-
-## Stack
-
-Electron · React · Vite · TypeScript · Tailwind · Zustand · Zod · ts-fsrs · CodeMirror · unified · Shiki · FlexSearch · chokidar.

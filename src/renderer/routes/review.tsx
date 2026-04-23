@@ -8,10 +8,10 @@ import { unwrap } from '../lib/api'
 import { MarkdownView } from '../components/markdown-view'
 
 const RATING_STYLE: Record<Rating, string> = {
-  Again: 'hover:border-danger/50 hover:text-danger',
-  Hard:  'hover:border-amber-600/50',
-  Good:  'hover:border-accent/60 hover:text-accent',
-  Easy:  'hover:border-emerald-600/50',
+  Again: '!border-danger/50 !text-danger hover:!bg-danger/10',
+  Hard:  '!border-amber-500/60 !text-amber-700 dark:!text-amber-400 hover:!bg-amber-500/10',
+  Good:  '!border-emerald-500/60 !text-emerald-700 dark:!text-emerald-400 hover:!bg-emerald-500/10',
+  Easy:  '!border-sky-500/60 !text-sky-700 dark:!text-sky-400 hover:!bg-sky-500/10',
 }
 
 export function ReviewRoute() {

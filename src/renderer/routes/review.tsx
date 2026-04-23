@@ -7,10 +7,18 @@ import { useAppStore } from '../stores/app-store'
 import { unwrap } from '../lib/api'
 import { MarkdownView } from '../components/markdown-view'
 
+const RATING_STYLE: Record<Rating, string> = {
+  Again: 'hover:border-danger/50 hover:text-danger',
+  Hard:  'hover:border-amber-600/50',
+  Good:  'hover:border-accent/60 hover:text-accent',
+  Easy:  'hover:border-emerald-600/50',
+}
+
 export function ReviewRoute() {
   const navigate = useNavigate()
   const { selectedNamespaces } = useAppStore()
   const [queue, setQueue] = useState<CardMeta[]>([])
+  const [initialQueueLen, setInitialQueueLen] = useState(0)
   const [current, setCurrent] = useState<CardFull | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [sessionCounts, setSessionCounts] = useState({ reviewed: 0, again: 0 })
@@ -18,6 +26,7 @@ export function ReviewRoute() {
   const loadQueue = useCallback(async () => {
     const q = await unwrap(window.api.getDueQueue({ namespaces: selectedNamespaces }))
     setQueue(q)
+    setInitialQueueLen(q.length)
   }, [selectedNamespaces])
 
   useEffect(() => { loadQueue() }, [loadQueue])
@@ -49,50 +58,94 @@ export function ReviewRoute() {
     return () => window.removeEventListener('keydown', onKey)
   }, [current, revealed, rate, navigate])
 
-  const breadcrumb = useMemo(() => current?.namespace.split('/').join(' / ') ?? '', [current])
+  const breadcrumb = useMemo(() => current?.namespace.split('/').join(' › ') ?? '', [current])
 
   if (!current) {
     return (
-      <div className="p-10 max-w-2xl mx-auto">
-        <h2 className="text-xl font-semibold">No cards due.</h2>
-        <p className="text-muted mt-2">
-          {sessionCounts.reviewed > 0
-            ? `Session: ${sessionCounts.reviewed} reviewed · ${sessionCounts.again} again.`
-            : 'Create a card or adjust your namespace filters.'}
-        </p>
+      <div className="h-full flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <div className="text-5xl mb-6 opacity-40">✓</div>
+          <h2 className="font-editorial text-2xl font-semibold mb-2">Nothing due right now.</h2>
+          <p className="text-muted text-[14px] leading-relaxed">
+            {sessionCounts.reviewed > 0
+              ? <>You reviewed <span className="font-semibold text-fg">{sessionCounts.reviewed}</span> {sessionCounts.reviewed === 1 ? 'card' : 'cards'} this session{sessionCounts.again > 0 ? <> — <span className="text-danger">{sessionCounts.again}</span> marked again</> : ''}.</>
+              : 'Create a card or adjust your namespace filters in the sidebar.'}
+          </p>
+        </div>
       </div>
     )
   }
 
+  const progress = initialQueueLen > 0 ? (sessionCounts.reviewed / initialQueueLen) * 100 : 0
+
   return (
-    <div className="max-w-3xl mx-auto p-10">
-      <div className="text-xs uppercase tracking-wider text-muted mb-2">{breadcrumb || 'root'}</div>
-      <h1 className="text-2xl font-serif font-semibold mb-8 leading-tight">{current.question}</h1>
-      {revealed ? (
-        <>
-          <MarkdownView content={current.body} />
-          <div className="mt-10 flex gap-2">
-            {RATINGS.map((r, i) => (
-              <button
-                key={r}
-                onClick={() => rate(r)}
-                className="px-4 py-2 text-sm border border-border rounded hover:bg-border/40"
-              >
-                <span className="text-muted mr-2">{i + 1}</span>{r}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <button
-          onClick={() => setRevealed(true)}
-          className="px-4 py-2 border border-border rounded text-sm hover:bg-border/40"
-        >
-          Reveal answer (Space)
-        </button>
-      )}
-      <div className="mt-12 text-xs text-muted">
-        {queue.length} cards in queue · Session: {sessionCounts.reviewed} reviewed, {sessionCounts.again} again
+    <div className="h-full flex flex-col relative">
+      {/* Thin amber progress bar */}
+      <div className="h-[2px] bg-border/60 relative overflow-hidden">
+        <div
+          className="absolute inset-y-0 left-0 bg-accent transition-[width] duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-[640px] mx-auto px-8 pt-16 pb-24">
+          {/* Breadcrumb */}
+          <div className="eyebrow mb-5">{breadcrumb || 'root'}</div>
+
+          {/* Question — editorial serif */}
+          <h1 className="font-editorial text-[30px] leading-[1.25] font-semibold text-fg mb-10 tracking-[-0.015em]">
+            {current.question}
+          </h1>
+
+          {revealed ? (
+            <>
+              <div className="h-px bg-border mb-8" />
+              <MarkdownView content={current.body} />
+              <div className="mt-14 pt-8 border-t border-border">
+                <div className="eyebrow mb-3">How well did you recall?</div>
+                <div className="flex flex-wrap gap-2">
+                  {RATINGS.map((r, i) => (
+                    <button
+                      key={r}
+                      onClick={() => rate(r)}
+                      className={`btn flex-1 min-w-[120px] ${RATING_STYLE[r]}`}
+                    >
+                      <span className="kbd">{i + 1}</span>
+                      <span>{r}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <button onClick={() => setRevealed(true)} className="btn-primary">
+              Reveal answer <span className="kbd !bg-white/20 !border-white/25 !text-white !shadow-none">Space</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Footer meta */}
+      <div className="px-8 py-2.5 border-t border-border bg-sidebar/50 flex items-center justify-between text-[11px] text-muted">
+        <div className="flex items-center gap-4">
+          <span><span className="font-mono tabular-nums text-fg">{queue.length}</span> in queue</span>
+          <span className="text-border">·</span>
+          <span><span className="font-mono tabular-nums text-fg">{sessionCounts.reviewed}</span> reviewed</span>
+          {sessionCounts.again > 0 && (
+            <>
+              <span className="text-border">·</span>
+              <span><span className="font-mono tabular-nums text-danger">{sessionCounts.again}</span> again</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="kbd">E</span><span>edit</span>
+          <span className="text-border mx-1">·</span>
+          <span className="kbd">Space</span><span>flip</span>
+          <span className="text-border mx-1">·</span>
+          <span className="kbd">1-4</span><span>rate</span>
+        </div>
       </div>
     </div>
   )

@@ -10,25 +10,39 @@ export function Sidebar() {
     { to: '/settings',  label: 'Settings' }
   ]
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-bg flex flex-col h-full">
-      <div className="px-4 py-3 font-semibold">Interview Prep</div>
-      <nav className="px-2">
+    <aside className="w-60 shrink-0 bg-sidebar border-r border-border flex flex-col h-full">
+      <div className="px-5 pt-5 pb-6">
+        <div className="font-editorial text-[17px] font-semibold text-fg leading-none">Interview Prep</div>
+        <div className="eyebrow mt-1.5">Spaced repetition</div>
+      </div>
+
+      <nav className="px-2 flex flex-col gap-0.5">
         {links.map(l => (
           <NavLink
             key={l.to}
             to={l.to}
             className={({ isActive }) =>
-              `block px-2 py-1.5 text-sm rounded ${isActive ? 'bg-border/60 text-fg' : 'text-muted hover:text-fg hover:bg-border/30'}`
+              `relative block pl-5 pr-3 py-1.5 text-[13px] rounded-r-md transition-colors ${
+                isActive
+                  ? 'text-fg font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-accent before:rounded-r'
+                  : 'text-muted font-medium hover:text-fg'
+              }`
             }
           >
             {l.label}
           </NavLink>
         ))}
       </nav>
-      <div className="px-4 py-2 text-xs uppercase tracking-wider text-muted mt-4">Namespaces</div>
-      <div className="flex-1 overflow-auto px-1"><NamespaceTree /></div>
-      <div className="p-3 border-t border-border flex justify-between items-center">
-        <NavLink to="/editor/new" className="text-sm text-accent hover:underline">+ New card</NavLink>
+
+      <div className="px-5 pt-7 pb-2">
+        <div className="eyebrow">Namespaces</div>
+      </div>
+      <div className="flex-1 overflow-auto px-1.5"><NamespaceTree /></div>
+
+      <div className="p-3 border-t border-border flex gap-2 items-center">
+        <NavLink to="/editor/new" className="btn-primary flex-1">
+          <span className="text-base leading-none">+</span> New card
+        </NavLink>
         <ThemeToggle />
       </div>
     </aside>

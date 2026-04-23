@@ -1,13 +1,19 @@
 import type { DashboardData } from '../../../shared/api'
 export function KeyStatsWidget({ data }: { data: NonNullable<DashboardData['keyStats']> }) {
+  const stat = (value: string | number, label: string, accent = false) => (
+    <div>
+      <div className={`font-editorial text-[28px] font-semibold leading-none tabular-nums ${accent ? 'text-accent' : 'text-fg'}`}>{value}</div>
+      <div className="eyebrow mt-1.5">{label}</div>
+    </div>
+  )
   return (
-    <div className="p-4 border border-border rounded bg-bg">
-      <div className="text-sm font-semibold mb-3">Key stats</div>
-      <div className="grid grid-cols-2 gap-3">
-        <div><div className="text-2xl font-semibold">{data.total}</div><div className="text-xs text-muted">Total</div></div>
-        <div><div className="text-2xl font-semibold">{Math.round(data.retention * 100)}%</div><div className="text-xs text-muted">Retention</div></div>
-        <div><div className="text-2xl font-semibold">{data.struggling}</div><div className="text-xs text-muted">Struggling</div></div>
-        <div><div className="text-2xl font-semibold">{data.mastered}</div><div className="text-xs text-muted">Mastered</div></div>
+    <div className="card-surface p-5">
+      <div className="eyebrow mb-4">Library</div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+        {stat(data.total, 'Total')}
+        {stat(`${Math.round(data.retention * 100)}%`, 'Retention', true)}
+        {stat(data.struggling, 'Struggling')}
+        {stat(data.mastered, 'Mastered')}
       </div>
     </div>
   )

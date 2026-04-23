@@ -24,12 +24,13 @@ export function DashboardRoute() {
     unwrap(window.api.getDashboardData(enabled)).then(setData)
   }, [enabled])
 
-  if (!data) return <div className="p-6 text-muted">Loading dashboard…</div>
+  if (!data) return <div className="p-10 text-muted italic font-editorial">Loading dashboard…</div>
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-xl font-semibold mb-4">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="max-w-6xl mx-auto px-8 py-10">
+      <div className="eyebrow mb-1.5">Overview</div>
+      <h1 className="font-editorial text-[28px] font-semibold leading-none mb-8">Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {enabled.map(id => {
           switch (id) {
             case 'due-forecast':      return data.dueForecast      && <DueForecastWidget      key={id} data={data.dueForecast} />

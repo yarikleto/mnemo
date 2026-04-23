@@ -11,7 +11,7 @@ import { SettingsRoute } from './routes/settings'
 export function App() {
   const { config, init } = useAppStore()
   useEffect(() => { init() }, [init])
-  if (!config) return <div className="p-6 text-muted">Loading…</div>
+  if (!config) return <div className="h-full flex items-center justify-center text-muted italic font-editorial">Loading…</div>
   return (
     <HashRouter>
       <div className="flex h-full">

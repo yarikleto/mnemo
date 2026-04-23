@@ -23,7 +23,16 @@ npx vitest run -t "name of test"
 
 Vite path aliases (match in tests and imports): `@main/*`, `@renderer/*`, `@shared/*`.
 
-### Boot-check / runtime verification
+### Shipping work: PRs, not direct pushes
+
+Do not just push a feature branch. Ship work through a pull request:
+
+1. Land commits on a feature branch (not `main`, not `feat/mvp` directly for new work — cut a fresh branch per feature, e.g. `feat/archive`, `fix/deck-counts`).
+2. Push the branch to `origin`.
+3. Open a PR with `gh pr create` — meaningful title, summary in the body, test plan checklist.
+4. If an existing PR is conflicting, merge `origin/main` in (or rebase), resolve, and push to update that same PR — don't open a new one.
+
+The only time it's fine to push without a PR is a trivial fix to a branch that already has an open PR.
 
 After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify the app actually boots rather than relying on typecheck alone. Use the `electron-debug` skill — it launches the built bundle via Playwright, forwards main stdio + renderer console + pageerrors, and intercepts IPC. Triggered with `npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" --duration 4000`. See `.claude/skills/electron-debug/SKILL.md` for flags, scripted UI flows, and failure-dump layout.
 
@@ -48,7 +57,7 @@ All renderer→main calls go through `ipcRenderer.invoke` and return `ApiResult<
 
 Two independent stores under the user-selected `rootPath`:
 
-- **`cards/`** — one `.md` per card with YAML front-matter (`id` = ULID, `question`, `tags`, `created`). Directory layout = namespace. This is user-owned content (git-friendly).
+- **`cards/`** — one `.md` per card with YAML front-matter (`id` = ULID, `prompts` = array of `{id, text}` variants, `tags`, `created`). Directory layout = namespace. This is user-owned content (git-friendly).
 - **`state/<id>.json`** — FSRS review state (stability, difficulty, due, history) keyed by card `id`. App-owned; kept out of the markdown deliberately.
 
 App config lives at `app.getPath('userData')/config.json` (see `src/main/paths.ts`). Schema in `src/shared/schema.ts`.

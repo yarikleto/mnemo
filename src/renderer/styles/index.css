@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 255 255 255;
+  --fg: 23 23 29;
+  --muted: 120 120 128;
+  --border: 230 230 232;
+  --accent: 46 125 91;
+}
+.dark {
+  --bg: 11 12 16;
+  --fg: 232 233 237;
+  --muted: 139 141 152;
+  --border: 30 31 38;
+  --accent: 167 139 250;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-bg text-fg font-sans antialiased;
+}

@@ -8,8 +8,10 @@ import { readState, writeState, deleteState, listStateIds } from '../store/state
 import { createScheduler, rateCard } from '../fsrs/scheduler'
 import { buildDueQueue } from '../fsrs/queue'
 import { openInExternalEditor } from '../editor-open'
+import { exportCardsWithDialog, pickImportFileWithDialog } from '../archive/dialog'
+import { importArchive } from '../archive/import'
 import { patchConfig } from '../store/config'
-import { configPath } from '../paths'
+import { configPath, cardsDir } from '../paths'
 import type { Config } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
@@ -30,25 +32,36 @@ const ok = <T>(data: T): ApiResult<T> => ({ ok: true, data })
 const err = (e: unknown): ApiResult<never> => ({ ok: false, error: e instanceof Error ? e.message : String(e) })
 
 function namespacesFromIndex(index: CardIndex, dueCountsByNs: Map<string, number>): NamespaceNode {
-  const root: NamespaceNode = { name: '', path: '', dueCount: 0, children: [] }
+  const root: NamespaceNode = { name: '', path: '', dueCount: 0, totalCount: 0, children: [] }
+  const totalByNs = new Map<string, number>()
   for (const meta of index.all()) {
+    totalByNs.set(meta.namespace, (totalByNs.get(meta.namespace) ?? 0) + 1)
     const parts = meta.namespace ? meta.namespace.split('/') : []
     let cur = root
     for (let i = 0; i < parts.length; i++) {
       const name = parts[i]!
       const nsPath = parts.slice(0, i + 1).join('/')
       let child = cur.children.find(c => c.name === name)
-      if (!child) { child = { name, path: nsPath, dueCount: 0, children: [] }; cur.children.push(child) }
+      if (!child) {
+        child = { name, path: nsPath, dueCount: 0, totalCount: 0, children: [] }
+        cur.children.push(child)
+      }
       cur = child
     }
   }
-  const fillCounts = (n: NamespaceNode): number => {
-    let total = dueCountsByNs.get(n.path) ?? 0
-    for (const child of n.children) total += fillCounts(child)
-    n.dueCount = total
-    return total
+  const fill = (n: NamespaceNode): { due: number; total: number } => {
+    let due = dueCountsByNs.get(n.path) ?? 0
+    let total = totalByNs.get(n.path) ?? 0
+    for (const child of n.children) {
+      const sub = fill(child)
+      due += sub.due
+      total += sub.total
+    }
+    n.dueCount = due
+    n.totalCount = total
+    return { due, total }
   }
-  fillCounts(root)
+  fill(root)
   return root
 }
 
@@ -136,12 +149,27 @@ export function registerIpc(ctx: Ctx): () => void {
     ctx.index.removeById(id)
   })
 
+  h('deleteNamespace', z.string(), async (ns) => {
+    if (!ns) throw new Error('Namespace is required')
+    const rootPath = ctx.getConfig().rootPath
+    const toDelete = ctx.index.all().filter(m => m.namespace === ns || m.namespace.startsWith(ns + '/'))
+    for (const meta of toDelete) {
+      await deleteState(rootPath, meta.id)
+      ctx.index.removeById(meta.id)
+      ctx.win.webContents.send('card-removed', meta.id)
+    }
+    const nsDir = path.join(cardsDir(rootPath), ns)
+    await fs.rm(nsDir, { recursive: true, force: true })
+    return { deleted: toDelete.length }
+  })
+
   h('rateReview', z.object({ id: z.string(), rating: z.enum(RATINGS) }), async (input) => {
     const cfg = ctx.getConfig()
     const scheduler = createScheduler(cfg.fsrs)
     const current = await readState(cfg.rootPath, input.id)
     const next = rateCard(scheduler, current, input.rating)
     await writeState(cfg.rootPath, next)
+    ctx.win.webContents.send('review-rated', input.id)
     return next
   })
 
@@ -191,6 +219,28 @@ export function registerIpc(ctx: Ctx): () => void {
     return computeDashboard(ctx, widgets)
   })
 
+  h('exportCards', z.object({ ids: z.array(z.string()).min(1) }), async (input) => {
+    return exportCardsWithDialog(
+      { rootPath: ctx.getConfig().rootPath, index: ctx.index, win: ctx.win },
+      input.ids
+    )
+  })
+
+  h('pickImportFile', VOID, async () => {
+    return pickImportFileWithDialog({ win: ctx.win })
+  })
+
+  h('importArchive', z.object({
+    path: z.string(),
+    targetNamespace: z.string(),
+    overwrite: z.boolean()
+  }), async (input) => {
+    return importArchive(
+      { rootPath: ctx.getConfig().rootPath, index: ctx.index, watcher: ctx.watcher, win: ctx.win },
+      input
+    )
+  })
+
   const onAdded = (id: string) => ctx.win.webContents.send('card-added', id)
   const onChanged = (id: string) => ctx.win.webContents.send('card-changed', id)
   const onRemoved = (id: string) => ctx.win.webContents.send('card-removed', id)
@@ -209,8 +259,9 @@ export function registerIpc(ctx: Ctx): () => void {
     ctx.watcher.off('card-removed', onRemoved)
     for (const ch of [
       'listNamespaces','listCards','getDueQueue','readCard','createCard','updateCard',
-      'moveCard','deleteCard','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
-      'searchCards','rescan','getDashboardData'
+      'moveCard','deleteCard','deleteNamespace','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
+      'searchCards','rescan','getDashboardData',
+      'exportCards','pickImportFile','importArchive'
     ]) ipcMain.removeHandler(ch)
   }
 }

@@ -12,7 +12,7 @@ export function LeechListWidget({ data }: { data: NonNullable<DashboardData['lee
           {data.map((c, i) => (
             <div
               key={c.id}
-              onClick={() => navigate(`/editor/${c.id}`)}
+              onClick={() => navigate(`/card/${c.id}`)}
               className={`flex justify-between items-center py-2 px-1 text-[13px] cursor-pointer transition-colors hover:text-accent ${i === data.length - 1 ? '' : 'border-b border-border/50'}`}
             >
               <span className="font-editorial truncate pr-3">{c.question}</span>

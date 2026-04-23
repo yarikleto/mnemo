@@ -7,7 +7,7 @@ export type FsrsOptions = { desiredRetention?: number; maximumInterval?: number 
 export function createScheduler(opts: FsrsOptions = {}): FSRS {
   const params = generatorParameters({
     request_retention: opts.desiredRetention ?? 0.9,
-    maximum_interval: opts.maximumInterval ?? 36500
+    maximum_interval: opts.maximumInterval ?? 365
   })
   return new FSRS(params)
 }

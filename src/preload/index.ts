@@ -18,6 +18,7 @@ const api: Api = {
   updateCard: (input) => invoke('updateCard', input),
   moveCard: (input) => invoke('moveCard', input),
   deleteCard: (id) => invoke('deleteCard', id),
+  deleteNamespace: (ns) => invoke('deleteNamespace', ns),
   rateReview: (input) => invoke('rateReview', input),
   openInExternalEditor: (id) => invoke('openInExternalEditor', id),
   saveAsset: (input) => invoke('saveAsset', input),
@@ -25,9 +26,13 @@ const api: Api = {
   updateConfig: (patch) => invoke('updateConfig', patch),
   searchCards: (q) => invoke('searchCards', q),
   rescan: () => invoke('rescan'),
+  exportCards: (input) => invoke('exportCards', input),
+  pickImportFile: () => invoke('pickImportFile'),
+  importArchive: (input) => invoke('importArchive', input),
   onCardChanged: (cb) => on('card-changed', cb),
   onCardAdded: (cb) => on('card-added', cb),
   onCardRemoved: (cb) => on('card-removed', cb),
+  onReviewRated: (cb) => on('review-rated', cb),
   onIndexRebuilt: (cb) => on('index-rebuilt', cb)
 }
 

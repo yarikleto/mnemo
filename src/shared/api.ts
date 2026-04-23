@@ -20,6 +20,19 @@ export type DashboardData = Partial<{
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }
 
+export type ArchivePreview = {
+  version: number
+  exportedAt: string
+  cardCount: number
+}
+
+export type ImportSummary = {
+  imported: number
+  skipped: number
+  overwritten: number
+  warnings: string[]
+}
+
 export interface Api {
   listNamespaces(): Promise<ApiResult<NamespaceNode>>
   listCards(namespace?: string): Promise<ApiResult<CardMeta[]>>
@@ -41,6 +54,14 @@ export interface Api {
 
   searchCards(query: string): Promise<ApiResult<CardMeta[]>>
   rescan(): Promise<ApiResult<void>>
+
+  exportCards(input: { ids: string[] }): Promise<ApiResult<{ path: string } | null>>
+  pickImportFile(): Promise<ApiResult<{ path: string; preview: ArchivePreview } | null>>
+  importArchive(input: {
+    path: string
+    targetNamespace: string
+    overwrite: boolean
+  }): Promise<ApiResult<ImportSummary>>
 
   onCardChanged(cb: (id: string) => void): () => void
   onCardAdded(cb: (id: string) => void): () => void

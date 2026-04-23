@@ -8,6 +8,8 @@ import { readState, writeState, deleteState, listStateIds } from '../store/state
 import { createScheduler, rateCard } from '../fsrs/scheduler'
 import { buildDueQueue } from '../fsrs/queue'
 import { openInExternalEditor } from '../editor-open'
+import { exportCardsWithDialog, pickImportFileWithDialog } from '../archive/dialog'
+import { importArchive } from '../archive/import'
 import { patchConfig } from '../store/config'
 import { configPath, cardsDir } from '../paths'
 import type { Config } from '../../shared/schema'
@@ -217,6 +219,28 @@ export function registerIpc(ctx: Ctx): () => void {
     return computeDashboard(ctx, widgets)
   })
 
+  h('exportCards', z.object({ ids: z.array(z.string()).min(1) }), async (input) => {
+    return exportCardsWithDialog(
+      { rootPath: ctx.getConfig().rootPath, index: ctx.index, win: ctx.win },
+      input.ids
+    )
+  })
+
+  h('pickImportFile', VOID, async () => {
+    return pickImportFileWithDialog({ win: ctx.win })
+  })
+
+  h('importArchive', z.object({
+    path: z.string(),
+    targetNamespace: z.string(),
+    overwrite: z.boolean()
+  }), async (input) => {
+    return importArchive(
+      { rootPath: ctx.getConfig().rootPath, index: ctx.index, watcher: ctx.watcher, win: ctx.win },
+      input
+    )
+  })
+
   const onAdded = (id: string) => ctx.win.webContents.send('card-added', id)
   const onChanged = (id: string) => ctx.win.webContents.send('card-changed', id)
   const onRemoved = (id: string) => ctx.win.webContents.send('card-removed', id)
@@ -236,7 +260,8 @@ export function registerIpc(ctx: Ctx): () => void {
     for (const ch of [
       'listNamespaces','listCards','getDueQueue','readCard','createCard','updateCard',
       'moveCard','deleteCard','deleteNamespace','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
-      'searchCards','rescan','getDashboardData'
+      'searchCards','rescan','getDashboardData',
+      'exportCards','pickImportFile','importArchive'
     ]) ipcMain.removeHandler(ch)
   }
 }

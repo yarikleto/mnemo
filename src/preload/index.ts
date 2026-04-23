@@ -18,6 +18,7 @@ const api: Api = {
   updateCard: (input) => invoke('updateCard', input),
   moveCard: (input) => invoke('moveCard', input),
   deleteCard: (id) => invoke('deleteCard', id),
+  deleteNamespace: (ns) => invoke('deleteNamespace', ns),
   rateReview: (input) => invoke('rateReview', input),
   openInExternalEditor: (id) => invoke('openInExternalEditor', id),
   saveAsset: (input) => invoke('saveAsset', input),

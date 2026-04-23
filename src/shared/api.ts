@@ -31,6 +31,7 @@ export interface Api {
   updateCard(input: { id: string; question?: string; body?: string; tags?: string[] }): Promise<ApiResult<CardFull>>
   moveCard(input: { id: string; namespace: string }): Promise<ApiResult<CardFull>>
   deleteCard(id: string): Promise<ApiResult<void>>
+  deleteNamespace(namespace: string): Promise<ApiResult<{ deleted: number }>>
   rateReview(input: { id: string; rating: Rating }): Promise<ApiResult<ReviewState>>
   openInExternalEditor(id: string): Promise<ApiResult<void>>
   saveAsset(input: { cardId: string; bytes: Uint8Array; ext: string }): Promise<ApiResult<{ relativePath: string }>>

@@ -9,7 +9,7 @@ import { createScheduler, rateCard } from '../fsrs/scheduler'
 import { buildDueQueue } from '../fsrs/queue'
 import { openInExternalEditor } from '../editor-open'
 import { patchConfig } from '../store/config'
-import { configPath } from '../paths'
+import { configPath, cardsDir } from '../paths'
 import type { Config } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
@@ -147,6 +147,20 @@ export function registerIpc(ctx: Ctx): () => void {
     ctx.index.removeById(id)
   })
 
+  h('deleteNamespace', z.string(), async (ns) => {
+    if (!ns) throw new Error('Namespace is required')
+    const rootPath = ctx.getConfig().rootPath
+    const toDelete = ctx.index.all().filter(m => m.namespace === ns || m.namespace.startsWith(ns + '/'))
+    for (const meta of toDelete) {
+      await deleteState(rootPath, meta.id)
+      ctx.index.removeById(meta.id)
+      ctx.win.webContents.send('card-removed', meta.id)
+    }
+    const nsDir = path.join(cardsDir(rootPath), ns)
+    await fs.rm(nsDir, { recursive: true, force: true })
+    return { deleted: toDelete.length }
+  })
+
   h('rateReview', z.object({ id: z.string(), rating: z.enum(RATINGS) }), async (input) => {
     const cfg = ctx.getConfig()
     const scheduler = createScheduler(cfg.fsrs)
@@ -221,7 +235,7 @@ export function registerIpc(ctx: Ctx): () => void {
     ctx.watcher.off('card-removed', onRemoved)
     for (const ch of [
       'listNamespaces','listCards','getDueQueue','readCard','createCard','updateCard',
-      'moveCard','deleteCard','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
+      'moveCard','deleteCard','deleteNamespace','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
       'searchCards','rescan','getDashboardData'
     ]) ipcMain.removeHandler(ch)
   }

@@ -1,0 +1,52 @@
+import type { CardFull, CardMeta, ReviewState, Config } from './schema'
+import type { Rating, WidgetId } from './constants'
+
+export type NamespaceNode = {
+  name: string
+  path: string
+  dueCount: number
+  children: NamespaceNode[]
+}
+
+export type DashboardData = Partial<{
+  dueForecast: { today: number; next7Days: number[] }
+  namespaceRanking: Array<{ namespace: string; retention: number; count: number }>
+  leechList: Array<{ id: string; question: string; lapses: number; namespace: string }>
+  heatmap: Array<{ id: string; question: string; retention: number; namespace: string }>
+  activityStreak: { days: Array<{ date: string; count: number }>; currentStreak: number; total: number }
+  keyStats: { total: number; retention: number; struggling: number; mastered: number }
+}>
+
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
+export interface Api {
+  listNamespaces(): Promise<ApiResult<NamespaceNode>>
+  listCards(namespace?: string): Promise<ApiResult<CardMeta[]>>
+  getDueQueue(filter: { namespaces?: string[] }): Promise<ApiResult<CardMeta[]>>
+  readCard(id: string): Promise<ApiResult<CardFull>>
+  getDashboardData(widgets: WidgetId[]): Promise<ApiResult<DashboardData>>
+
+  createCard(input: { namespace: string; question: string; body: string; tags?: string[] }): Promise<ApiResult<CardFull>>
+  updateCard(input: { id: string; question?: string; body?: string; tags?: string[] }): Promise<ApiResult<CardFull>>
+  moveCard(input: { id: string; namespace: string }): Promise<ApiResult<CardFull>>
+  deleteCard(id: string): Promise<ApiResult<void>>
+  rateReview(input: { id: string; rating: Rating }): Promise<ApiResult<ReviewState>>
+  openInExternalEditor(id: string): Promise<ApiResult<void>>
+
+  getConfig(): Promise<ApiResult<Config>>
+  updateConfig(patch: Partial<Config>): Promise<ApiResult<Config>>
+
+  searchCards(query: string): Promise<ApiResult<CardMeta[]>>
+  rescan(): Promise<ApiResult<void>>
+
+  onCardChanged(cb: (id: string) => void): () => void
+  onCardAdded(cb: (id: string) => void): () => void
+  onCardRemoved(cb: (id: string) => void): () => void
+  onIndexRebuilt(cb: () => void): () => void
+}
+
+declare global {
+  interface Window {
+    api: Api
+  }
+}

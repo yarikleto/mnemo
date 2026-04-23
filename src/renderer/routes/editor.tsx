@@ -112,7 +112,12 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
             className="input-bare w-full font-editorial text-[26px] font-semibold leading-tight tracking-[-0.015em]"
             placeholder="Question…"
             value={question}
-            onChange={e => { setQuestion(e.target.value); scheduleAutosave() }}
+            onChange={e => {
+              const v = e.target.value
+              setQuestion(v)
+              if (isError && v.trim()) setStatus('')
+              scheduleAutosave()
+            }}
           />
 
           <div className="flex gap-2 mt-3">

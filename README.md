@@ -13,11 +13,13 @@
 ## Features
 
 - Plain-markdown cards with YAML front-matter
-- Folder layout defines the namespace
-- FSRS scheduling with configurable retention
+- Folder layout defines the namespace — whole decks can be deleted from the sidebar
+- FSRS scheduling with configurable retention and maximum interval
 - Live file watcher — edit cards in any editor, the app updates instantly
-- Full-text search
-- Configurable dashboard (due forecast, leech list, heatmap, streaks, namespace ranking, key stats)
+- Full-text search across prompts and bodies
+- Read-mode card viewer with an explicit Edit affordance — separates recall from authoring
+- Configurable dashboard with per-widget titles and descriptions (due forecast, leech list, heatmap, streaks, namespace ranking, key stats)
+- Share cards between machines via a portable `.mnemo.zip` archive (export with search + multi-select, import with preview, target namespace, and skip/overwrite)
 - Dark, light, and system themes
 - Cross-platform packaging for macOS, Windows, and Linux
 
@@ -68,7 +70,16 @@ vault/
       anatomy/heart.md          → medicine/anatomy
 ```
 
-The sidebar tree, namespace ranking widget, and review filters all derive from this layout.
+The sidebar tree, namespace ranking widget, and review filters all derive from this layout. Hover a deck in the sidebar to delete it — the app removes the namespace folder, every card under it, and the matching review state atomically.
+
+## Sharing cards
+
+Cards are portable. To hand some off to another machine or another person:
+
+1. **Export** — open the sidebar → Export, search and multi-select cards (tri-state namespace checkboxes let you grab whole decks at once), pick a destination. You get a single `.mnemo.zip` containing every selected card plus any assets they reference.
+2. **Import** on the other side — Sidebar → Import, pick the archive, preview the card count, choose a target namespace (defaults to `imported`), and decide whether to skip or overwrite cards whose IDs already exist.
+
+Review state (stability, difficulty, due date) is **not** shared — archives carry cards and assets only. Progress stays local to each machine.
 
 ## Scripts
 

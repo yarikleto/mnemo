@@ -4,10 +4,11 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirro
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 
-export function CodeMirrorEditor({ value, onChange, onPasteImage }: {
+export function CodeMirrorEditor({ value, onChange, onPasteImage, className = 'h-full' }: {
   value: string
   onChange: (v: string) => void
   onPasteImage?: (file: File) => Promise<string | null>
+  className?: string
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -59,5 +60,5 @@ export function CodeMirrorEditor({ value, onChange, onPasteImage }: {
     }
   }, [value])
 
-  return <div ref={hostRef} className="h-full" />
+  return <div ref={hostRef} className={className} />
 }

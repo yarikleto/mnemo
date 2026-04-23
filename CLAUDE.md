@@ -23,11 +23,29 @@ npx vitest run -t "name of test"
 
 Vite path aliases (match in tests and imports): `@main/*`, `@renderer/*`, `@shared/*`.
 
-### Boot-check / runtime verification
+### Shipping work: PRs, not direct pushes
+
+Do not just push a feature branch. Ship work through a pull request:
+
+1. Land commits on a feature branch (not `main`, not `feat/mvp` directly for new work — cut a fresh branch per feature, e.g. `feat/archive`, `fix/deck-counts`).
+2. Push the branch to `origin`.
+3. Open a PR with `gh pr create` — meaningful title, summary in the body, test plan checklist.
+4. If an existing PR is conflicting, merge `origin/main` in (or rebase), resolve, and push to update that same PR — don't open a new one.
+
+The only time it's fine to push without a PR is a trivial fix to a branch that already has an open PR.
 
 After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify the app actually boots rather than relying on typecheck alone. Use the `electron-debug` skill — it launches the built bundle via Playwright, forwards main stdio + renderer console + pageerrors, and intercepts IPC. Triggered with `npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" --duration 4000`. See `.claude/skills/electron-debug/SKILL.md` for flags, scripted UI flows, and failure-dump layout.
 
 Known gotcha the skill catches: `webPreferences.preload` in `src/main/index.ts` must point at the `.mjs` output emitted by `vite-plugin-electron`, not `.js`. Also: do not introduce PRNG-detecting libs (`ulid`, some `uuid`) into the main bundle — they crash on ESM import. A node-`crypto` ULID lives at `src/main/id.ts`; use that.
+
+### Authoring cards
+
+Two tools, different jobs:
+
+- **`card-researcher` subagent** (`.claude/agents/card-researcher.md`) — use when the user asks you to **research a topic and turn it into cards**. Triggers: "make me cards about X", "learn me Rust ownership", "drill me on the French subjunctive", "research X and quiz me", any batch-of-cards-on-an-unfamiliar-topic request. The agent does its own web research, decomposes the topic into atomic cards, writes 2–3 prompt variants per card (different retrieval angles: mechanism / scenario / consequence), and saves them via the `creating-card` skill. Delegate via the Agent tool with `subagent_type: "card-researcher"`; pass the topic plus any constraints (count, namespace, angle, language) in the prompt.
+- **`creating-card` skill** (`.claude/skills/creating-card/SKILL.md`) — use when the user hands you **the card content already** (a single explanation they wrote, a conversation snippet, a paragraph from a doc) and just wants it committed as a card. No research needed, no batching — just format and write. The skill's helper script (`scripts/create-card.mjs`) is also what the subagent shells out to.
+
+Do NOT use the subagent to turn a single already-written note into one card — that's overkill and burns research tokens. Do NOT hand-roll card YAML yourself when the skill exists.
 
 ## Architecture
 
@@ -48,7 +66,7 @@ All renderer→main calls go through `ipcRenderer.invoke` and return `ApiResult<
 
 Two independent stores under the user-selected `rootPath`:
 
-- **`cards/`** — one `.md` per card with YAML front-matter (`id` = ULID, `question`, `tags`, `created`). Directory layout = namespace. This is user-owned content (git-friendly).
+- **`cards/`** — one `.md` per card with YAML front-matter (`id` = ULID, `prompts` = array of `{id, text}` variants, `tags`, `created`). Directory layout = namespace. This is user-owned content (git-friendly).
 - **`state/<id>.json`** — FSRS review state (stability, difficulty, due, history) keyed by card `id`. App-owned; kept out of the markdown deliberately.
 
 App config lives at `app.getPath('userData')/config.json` (see `src/main/paths.ts`). Schema in `src/shared/schema.ts`.

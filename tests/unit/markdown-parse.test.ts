@@ -3,16 +3,38 @@ import { parseCardFile, serializeCardFile } from '../../src/main/markdown/parse'
 
 describe('parseCardFile', () => {
   it('extracts frontmatter and body', () => {
-    const raw = `---\nid: "abc"\nquestion: "What?"\ntags: [a, b]\ncreated: "2026-04-23T10:00:00.000Z"\n---\n\nBody **markdown** here.\n`
+    const raw = [
+      '---',
+      'id: abc',
+      'prompts:',
+      '  - id: p1',
+      "    text: 'What?'",
+      'tags:',
+      '  - a',
+      '  - b',
+      "created: '2026-04-23T10:00:00.000Z'",
+      '---',
+      '',
+      'Body **markdown** here.',
+      ''
+    ].join('\n')
     const { frontmatter, body } = parseCardFile(raw)
     expect(frontmatter.id).toBe('abc')
-    expect(frontmatter.question).toBe('What?')
+    expect(frontmatter.prompts).toEqual([{ id: 'p1', text: 'What?' }])
     expect(frontmatter.tags).toEqual(['a', 'b'])
     expect(body.trim()).toBe('Body **markdown** here.')
   })
 
-  it('roundtrips', () => {
-    const fm = { id: 'x', question: 'Q?', tags: ['t'], created: '2026-04-23T10:00:00.000Z' }
+  it('roundtrips a card with multiple prompts', () => {
+    const fm = {
+      id: 'x',
+      prompts: [
+        { id: 'pA', text: 'Short prompt?' },
+        { id: 'pB', text: 'line one\nline two\n![](./assets/x.png)' }
+      ],
+      tags: ['t'],
+      created: '2026-04-23T10:00:00.000Z'
+    }
     const body = 'Answer\n'
     const raw = serializeCardFile(fm, body)
     const parsed = parseCardFile(raw)

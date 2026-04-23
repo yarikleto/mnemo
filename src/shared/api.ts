@@ -9,16 +9,24 @@ export type NamespaceNode = {
   children: NamespaceNode[]
 }
 
+export type DueCard = {
+  cardId: string
+  namespace: string
+  tags: string[]
+}
+
 export type DashboardData = Partial<{
   dueForecast: { today: number; next7Days: number[] }
   namespaceRanking: Array<{ namespace: string; retention: number; count: number }>
-  leechList: Array<{ id: string; question: string; lapses: number; namespace: string }>
-  heatmap: Array<{ id: string; question: string; retention: number; namespace: string }>
+  leechList: Array<{ cardId: string; promptText: string; lapses: number; namespace: string }>
+  heatmap: Array<{ cardId: string; promptText: string; retention: number; namespace: string }>
   activityStreak: { days: Array<{ date: string; count: number }>; currentStreak: number; total: number }
   keyStats: { total: number; retention: number; struggling: number; mastered: number }
 }>
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
+export type PromptPatch = { id?: string; text: string }
 
 export type ArchivePreview = {
   version: number
@@ -36,16 +44,16 @@ export type ImportSummary = {
 export interface Api {
   listNamespaces(): Promise<ApiResult<NamespaceNode>>
   listCards(namespace?: string): Promise<ApiResult<CardMeta[]>>
-  getDueQueue(filter: { namespaces?: string[] }): Promise<ApiResult<CardMeta[]>>
+  getDueQueue(filter: { namespaces?: string[] }): Promise<ApiResult<DueCard[]>>
   readCard(id: string): Promise<ApiResult<CardFull>>
   getDashboardData(widgets: WidgetId[]): Promise<ApiResult<DashboardData>>
 
-  createCard(input: { namespace: string; question: string; body: string; tags?: string[] }): Promise<ApiResult<CardFull>>
-  updateCard(input: { id: string; question?: string; body?: string; tags?: string[] }): Promise<ApiResult<CardFull>>
+  createCard(input: { namespace: string; prompts: string[]; body: string; tags?: string[] }): Promise<ApiResult<CardFull>>
+  updateCard(input: { id: string; prompts?: PromptPatch[]; body?: string; tags?: string[] }): Promise<ApiResult<CardFull>>
   moveCard(input: { id: string; namespace: string }): Promise<ApiResult<CardFull>>
   deleteCard(id: string): Promise<ApiResult<void>>
   deleteNamespace(namespace: string): Promise<ApiResult<{ deleted: number }>>
-  rateReview(input: { id: string; rating: Rating }): Promise<ApiResult<ReviewState>>
+  rateReview(input: { cardId: string; rating: Rating }): Promise<ApiResult<ReviewState>>
   openInExternalEditor(id: string): Promise<ApiResult<void>>
   saveAsset(input: { cardId: string; bytes: Uint8Array; ext: string }): Promise<ApiResult<{ relativePath: string }>>
 
@@ -66,7 +74,7 @@ export interface Api {
   onCardChanged(cb: (id: string) => void): () => void
   onCardAdded(cb: (id: string) => void): () => void
   onCardRemoved(cb: (id: string) => void): () => void
-  onReviewRated(cb: (id: string) => void): () => void
+  onReviewRated(cb: (cardId: string) => void): () => void
   onIndexRebuilt(cb: () => void): () => void
 }
 

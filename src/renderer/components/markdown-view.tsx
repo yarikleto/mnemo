@@ -17,7 +17,7 @@ function getSharedHighlighter() {
   return highlighterPromise
 }
 
-export function MarkdownView({ content, basePath }: { content: string; basePath?: string }) {
+export function MarkdownView({ content, basePath, className }: { content: string; basePath?: string; className?: string }) {
   const [node, setNode] = useState<React.ReactNode>(null)
   useEffect(() => {
     let cancelled = false
@@ -48,5 +48,5 @@ export function MarkdownView({ content, basePath }: { content: string; basePath?
     })()
     return () => { cancelled = true }
   }, [content, basePath])
-  return <div className="prose max-w-none font-serif text-[17px] leading-relaxed">{node}</div>
+  return <div className={className ?? 'prose max-w-none font-serif text-[17px] leading-relaxed'}>{node}</div>
 }

@@ -2,7 +2,7 @@ import path from 'node:path'
 import { app } from 'electron'
 
 export function defaultRootPath(): string {
-  return path.join(app.getPath('documents'), 'interview-prep')
+  return path.join(app.getPath('documents'), 'mnemo')
 }
 
 export function configPath(): string {

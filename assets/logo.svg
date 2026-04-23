@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-label="Mnemo">
+  <defs>
+    <linearGradient id="mnemo-bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F46E5"/>
+      <stop offset="0.55" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="mnemo-letter" x1="88" y1="88" x2="168" y2="184" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <filter id="mnemo-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="url(#mnemo-bg)"/>
+
+  <g transform="rotate(-10 128 128)">
+    <rect x="70" y="48" width="116" height="160" rx="16" fill="white" fill-opacity="0.18"/>
+  </g>
+  <g transform="rotate(-5 128 128)">
+    <rect x="70" y="48" width="116" height="160" rx="16" fill="white" fill-opacity="0.32"/>
+  </g>
+
+  <rect x="70" y="48" width="116" height="160" rx="16" fill="white" filter="url(#mnemo-shadow)"/>
+
+  <rect x="88" y="72" width="52" height="6" rx="3" fill="url(#mnemo-letter)" fill-opacity="0.18"/>
+
+  <path d="M 92 180 V 96 L 128 140 L 164 96 V 180"
+        stroke="url(#mnemo-letter)"
+        stroke-width="14"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+</svg>

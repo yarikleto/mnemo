@@ -12,7 +12,7 @@ export function Sidebar() {
   return (
     <aside className="w-60 shrink-0 bg-sidebar border-r border-border flex flex-col h-full">
       <div className="px-5 pt-5 pb-6">
-        <div className="font-editorial text-[17px] font-semibold text-fg leading-none">Interview Prep</div>
+        <div className="font-editorial text-[17px] font-semibold text-fg leading-none">Mnemo</div>
         <div className="eyebrow mt-1.5">Spaced repetition</div>
       </div>
 

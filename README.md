@@ -1,6 +1,14 @@
-# Interview Prep
+<p align="center">
+  <img src="./assets/logo.svg" alt="Mnemo" width="128" height="128"/>
+</p>
 
-A local-first spaced-repetition app for anything you want to memorise — languages, algorithms, medicine, trivia, whatever. Cards are plain markdown files you own: edit in any editor, track in git. Scheduling uses [FSRS](https://github.com/open-spaced-repetition/ts-fsrs).
+<h1 align="center">Mnemo</h1>
+
+<p align="center">
+  A local-first spaced-repetition app for anything you want to memorise — languages, algorithms, medicine, trivia, whatever.<br/>
+  Cards are plain markdown files you own: edit in any editor, track in git.<br/>
+  Scheduling uses <a href="https://github.com/open-spaced-repetition/ts-fsrs">FSRS</a>.
+</p>
 
 ## Features
 
@@ -90,9 +98,9 @@ src/
 
 - **Cards and review state** live under the vault folder you picked — back them up like any other notes.
 - **App config** is stored in the OS-standard app-data directory:
-  - macOS — `~/Library/Application Support/Interview Prep/`
-  - Windows — `%APPDATA%/Interview Prep/`
-  - Linux — `~/.config/Interview Prep/`
+  - macOS — `~/Library/Application Support/Mnemo/`
+  - Windows — `%APPDATA%/Mnemo/`
+  - Linux — `~/.config/Mnemo/`
 
 All writes are atomic (temp file + rename), so a crash mid-write won't corrupt state.
 

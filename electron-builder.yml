@@ -1,5 +1,5 @@
-appId: com.interview-prep.app
-productName: Interview Prep
+appId: com.mnemo.app
+productName: Mnemo
 directories:
   output: out
 files:

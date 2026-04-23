@@ -6,7 +6,7 @@ test('boots, creates a card, reviews it', async () => {
     args: [path.resolve(__dirname, '../../dist-electron/main/index.js')]
   })
   const window = await app.firstWindow()
-  await window.waitForSelector('text=Interview Prep')
+  await window.waitForSelector('text=Mnemo')
 
   await window.click('text=+ New card')
   await window.fill('input[placeholder="Question…"]', 'What is a CDN?')

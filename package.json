@@ -1,7 +1,7 @@
 {
-  "name": "interview-prep",
+  "name": "mnemo",
   "version": "0.1.0",
-  "description": "Spaced-repetition SWE interview prep app",
+  "description": "Local-first spaced-repetition app with markdown-backed cards",
   "private": true,
   "main": "dist-electron/main/index.js",
   "type": "module",

@@ -25,14 +25,14 @@ Vite path aliases (match in tests and imports): `@main/*`, `@renderer/*`, `@shar
 
 ### Shipping work: PRs, not direct pushes
 
-Do not just push a feature branch. Ship work through a pull request:
+**Always open a PR.** Pushing a branch is not shipping. If you push and there isn't already an **open** PR covering your commits, open one in the same turn via `gh pr create` — don't wait for the user to ask about it.
 
 1. Land commits on a feature branch (not `main`, not `feat/mvp` directly for new work — cut a fresh branch per feature, e.g. `feat/archive`, `fix/deck-counts`).
 2. Push the branch to `origin`.
 3. Open a PR with `gh pr create` — meaningful title, summary in the body, test plan checklist.
-4. If an existing PR is conflicting, merge `origin/main` in (or rebase), resolve, and push to update that same PR — don't open a new one.
+4. If an existing PR for this branch is conflicting, merge `origin/main` in (or rebase), resolve, and push to update that same PR — don't open a new one.
 
-The only time it's fine to push without a PR is a trivial fix to a branch that already has an open PR.
+Before pushing, run `gh pr list --head <branch>` (or equivalent) to check whether an open PR already covers the commits you're about to add. A *merged* or *closed* PR does not count — once merged, the branch is effectively new again, so new commits need a new PR, cut from a fresh branch off `origin/main`. The only time it's fine to push without opening a PR is when there's an **open** PR on that exact branch and you're just updating it.
 
 After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify the app actually boots rather than relying on typecheck alone. Use the `electron-debug` skill — it launches the built bundle via Playwright, forwards main stdio + renderer console + pageerrors, and intercepts IPC. Triggered with `npm run build && node ./tools/electron-debug/run.mjs --duration 4000`. See `.claude/skills/electron-debug/SKILL.md` (Claude Code) or `.codex/skills/electron-debug/SKILL.md` (Codex) for flags, scripted UI flows, and failure-dump layout.
 

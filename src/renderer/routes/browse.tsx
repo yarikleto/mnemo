@@ -6,13 +6,28 @@ import { useAppStore } from '../stores/app-store'
 
 export function BrowseRoute() {
   const navigate = useNavigate()
-  const { selectedNamespaces } = useAppStore()
+  const { selectedNamespaces, refreshNamespaces } = useAppStore()
   const [rows, setRows] = useState<CardMeta[]>([])
   const [query, setQuery] = useState('')
 
+  const refresh = () => { unwrap(window.api.listCards()).then(setRows) }
+
   useEffect(() => {
-    unwrap(window.api.listCards()).then(setRows)
+    refresh()
+    const offAdded = window.api.onCardAdded(refresh)
+    const offChanged = window.api.onCardChanged(refresh)
+    const offRemoved = window.api.onCardRemoved(refresh)
+    return () => { offAdded(); offChanged(); offRemoved() }
   }, [])
+
+  const handleDelete = async (e: React.MouseEvent, r: CardMeta) => {
+    e.stopPropagation()
+    const confirmed = window.confirm(`Delete "${r.question}"? This cannot be undone.`)
+    if (!confirmed) return
+    await unwrap(window.api.deleteCard(r.id))
+    setRows(rows => rows.filter(x => x.id !== r.id))
+    await refreshNamespaces()
+  }
 
   const filtered = useMemo(() => {
     const lc = query.toLowerCase().trim()
@@ -55,6 +70,7 @@ export function BrowseRoute() {
                   <th className="eyebrow !text-left px-4 py-2.5">Question</th>
                   <th className="eyebrow !text-left px-4 py-2.5 w-56">Namespace</th>
                   <th className="eyebrow !text-left px-4 py-2.5 w-48">Tags</th>
+                  <th className="w-10" />
                 </tr>
               </thead>
               <tbody>
@@ -62,7 +78,7 @@ export function BrowseRoute() {
                   <tr
                     key={r.id}
                     onClick={() => navigate(`/editor/${r.id}`)}
-                    className={`cursor-pointer transition-colors hover:bg-accent/5 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
+                    className={`group cursor-pointer transition-colors hover:bg-accent/5 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
                   >
                     <td className="px-4 py-3 font-editorial text-[14.5px] text-fg">{r.question}</td>
                     <td className="px-4 py-3 font-mono text-[11.5px] text-muted">{r.namespace || '—'}</td>
@@ -72,6 +88,15 @@ export function BrowseRoute() {
                           <span key={t} className="text-[11px] px-1.5 py-0.5 bg-border/50 rounded text-muted">{t}</span>
                         ))}
                       </div>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        onClick={e => handleDelete(e, r)}
+                        aria-label={`Delete ${r.question}`}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[12px] text-muted hover:text-danger px-2 py-1"
+                      >
+                        ✕
+                      </button>
                     </td>
                   </tr>
                 ))}

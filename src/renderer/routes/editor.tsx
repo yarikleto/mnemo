@@ -74,6 +74,16 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     await unwrap(window.api.openInExternalEditor(loadedId))
   }
 
+  const remove = async () => {
+    if (!loadedId) return
+    const confirmed = window.confirm(`Delete "${question || 'this card'}"? This cannot be undone.`)
+    if (!confirmed) return
+    if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
+    await unwrap(window.api.deleteCard(loadedId))
+    await refreshNamespaces()
+    navigate('/browse')
+  }
+
   const previewBody = useMemo(() => body, [body])
   const isError = status === 'Question required'
 
@@ -91,6 +101,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
                   : <span className="text-[11.5px] text-muted italic">{status}</span>
               )}
               <button onClick={openExternal} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px]">Open externally</button>
+              <button onClick={remove} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px] !text-danger hover:!border-danger/60">Delete</button>
               <button onClick={save} className="btn-primary !py-1.5 !px-4 !text-[12px]">
                 Save <span className="kbd !bg-white/20 !border-white/25 !text-white !shadow-none !h-[1.1rem] !text-[10px]">⌘S</span>
               </button>

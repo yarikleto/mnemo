@@ -5,7 +5,7 @@ import { readState, writeState, deleteState, listStateIds } from '../store/state
 import { createScheduler, rateCard } from '../fsrs/scheduler'
 import { buildDueQueue } from '../fsrs/queue'
 import { openInExternalEditor } from '../editor-open'
-import { loadConfig, patchConfig } from '../store/config'
+import { patchConfig } from '../store/config'
 import { configPath } from '../paths'
 import type { Config } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'

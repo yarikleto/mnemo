@@ -10,6 +10,7 @@ import { CardFrontmatterSchema } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
 import type { ImportSummary } from '../../shared/api'
 import { referencedAssets } from './export'
+import { isSafeAssetName } from './asset-safety'
 
 type ImportCtx = {
   rootPath: string
@@ -112,6 +113,10 @@ export async function importArchive(
       const alreadyWritten = assetWrittenTo.get(destNamespace) ?? new Set<string>()
       const assetsDir = path.join(path.dirname(destPath), 'assets')
       for (const asset of needed) {
+        if (!isSafeAssetName(asset)) {
+          summary.warnings.push(`Skipping unsafe asset name: ${asset}`)
+          continue
+        }
         if (alreadyWritten.has(asset)) continue
         const assetEntry = zip.file(`cards/assets/${asset}`)
         if (!assetEntry) {

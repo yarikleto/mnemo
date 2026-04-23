@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, net } from 'electron'
+import { app, BrowserWindow, protocol, net, session } from 'electron'
 import path from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { loadConfig } from './store/config'
@@ -13,7 +13,31 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'mnemo-asset', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
 ])
 
+const CSP = [
+  "default-src 'self' mnemo-asset:",
+  // wasm-unsafe-eval is required by Shiki's WebAssembly highlighter; it does NOT
+  // re-enable javascript: href execution (which is blocked unless 'unsafe-inline'
+  // is present alongside it and Chromium still blocks navigations to javascript:).
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' mnemo-asset: data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' ws: wss:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-src 'none'",
+].join('; ')
+
 async function createWindow() {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [CSP],
+      },
+    })
+  })
+
   const win = new BrowserWindow({
     width: 1280,
     height: 800,

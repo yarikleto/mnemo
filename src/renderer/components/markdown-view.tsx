@@ -3,12 +3,22 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import rehypeReact, { type Options } from 'rehype-react'
 import * as prod from 'react/jsx-runtime'
 import { getHighlighter } from 'shiki'
 import { resolveAssetUrl } from '../lib/asset-url'
 
 const reactOpts: Options = { jsx: prod.jsx, jsxs: prod.jsxs, Fragment: prod.Fragment }
+
+const sanitizeSchema = {
+  ...defaultSchema,
+  protocols: {
+    ...(defaultSchema.protocols ?? {}),
+    href: ['http', 'https', 'mailto', 'mnemo-asset'],
+    src: ['http', 'https', 'data', 'mnemo-asset'],
+  },
+}
 let highlighterPromise: ReturnType<typeof getHighlighter> | null = null
 function getSharedHighlighter() {
   if (!highlighterPromise) {
@@ -27,6 +37,7 @@ export function MarkdownView({ content, basePath, className }: { content: string
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkRehype, { allowDangerousHtml: false })
+        .use(rehypeSanitize, sanitizeSchema)
         .use(rehypeReact, {
           ...reactOpts,
           components: {

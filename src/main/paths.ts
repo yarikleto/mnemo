@@ -18,7 +18,13 @@ export function stateDir(rootPath: string): string {
 }
 
 export function stateFile(rootPath: string, id: string): string {
-  return path.join(stateDir(rootPath), `${id}.json`)
+  const dir = stateDir(rootPath)
+  const file = path.join(dir, `${id}.json`)
+  const rel = path.relative(dir, file)
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`Unsafe state file id: ${id}`)
+  }
+  return file
 }
 
 export function namespaceFromPath(rootPath: string, absPath: string): string {

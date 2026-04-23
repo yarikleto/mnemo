@@ -4,9 +4,15 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirro
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 
-export function CodeMirrorEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function CodeMirrorEditor({ value, onChange, onPasteImage }: {
+  value: string
+  onChange: (v: string) => void
+  onPasteImage?: (file: File) => Promise<string | null>
+}) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
+  const onPasteImageRef = useRef(onPasteImage)
+  useEffect(() => { onPasteImageRef.current = onPasteImage }, [onPasteImage])
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -20,6 +26,22 @@ export function CodeMirrorEditor({ value, onChange }: { value: string; onChange:
           history(),
           markdown(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
+          EditorView.domEventHandlers({
+            paste: (event, v) => {
+              const handler = onPasteImageRef.current
+              if (!handler || !event.clipboardData) return false
+              const file = Array.from(event.clipboardData.files).find(f => f.type.startsWith('image/'))
+              if (!file) return false
+              event.preventDefault()
+              handler(file).then(rel => {
+                if (!rel) return
+                const { from, to } = v.state.selection.main
+                const snippet = `![](${rel})`
+                v.dispatch({ changes: { from, to, insert: snippet }, selection: { anchor: from + snippet.length } })
+              })
+              return true
+            }
+          }),
           EditorView.updateListener.of(u => { if (u.docChanged) onChange(u.state.doc.toString()) })
         ]
       })

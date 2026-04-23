@@ -1,6 +1,6 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, protocol, net } from 'electron'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { pathToFileURL, fileURLToPath } from 'node:url'
 import { loadConfig } from './store/config'
 import { CardIndex } from './store/index'
 import { Watcher } from './watcher'
@@ -8,6 +8,10 @@ import { registerIpc } from './ipc/register'
 import { configPath, defaultRootPath } from './paths'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'mnemo-asset', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+])
 
 async function createWindow() {
   const win = new BrowserWindow({
@@ -26,6 +30,18 @@ async function createWindow() {
   await index.buildFrom(config.rootPath)
   const watcher = new Watcher(config.rootPath, index)
   watcher.start()
+
+  protocol.handle('mnemo-asset', (req) => {
+    const url = new URL(req.url)
+    const decoded = decodeURIComponent(url.pathname)
+    const abs = path.resolve(decoded)
+    const root = path.resolve(config.rootPath)
+    const rel = path.relative(root, abs)
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      return new Response('forbidden', { status: 403 })
+    }
+    return net.fetch(pathToFileURL(abs).toString())
+  })
 
   registerIpc({
     getConfig: () => config,

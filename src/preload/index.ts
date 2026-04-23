@@ -20,6 +20,7 @@ const api: Api = {
   deleteCard: (id) => invoke('deleteCard', id),
   rateReview: (input) => invoke('rateReview', input),
   openInExternalEditor: (id) => invoke('openInExternalEditor', id),
+  saveAsset: (input) => invoke('saveAsset', input),
   getConfig: () => invoke('getConfig'),
   updateConfig: (patch) => invoke('updateConfig', patch),
   searchCards: (q) => invoke('searchCards', q),

@@ -1,5 +1,8 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { z } from 'zod'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
 import { readCardAtPath, createCardOnDisk, updateCardOnDisk, moveCardOnDisk, deleteCardOnDisk } from '../store/cards'
 import { readState, writeState, deleteState, listStateIds } from '../store/state'
 import { createScheduler, rateCard } from '../fsrs/scheduler'
@@ -148,6 +151,25 @@ export function registerIpc(ctx: Ctx): () => void {
     await openInExternalEditor(meta.path, ctx.getConfig().externalEditor)
   })
 
+  const IMG_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'])
+  h('saveAsset', z.object({
+    cardId: z.string(),
+    bytes: z.instanceof(Uint8Array),
+    ext: z.string()
+  }), async (input) => {
+    const ext = input.ext.toLowerCase().replace(/^\./, '')
+    if (!IMG_EXTS.has(ext)) throw new Error(`Unsupported asset extension: ${ext}`)
+    const meta = ctx.index.get(input.cardId)
+    if (!meta) throw new Error(`Card not found: ${input.cardId}`)
+    const cardDir = path.dirname(meta.path)
+    const hash = crypto.createHash('sha256').update(input.bytes).digest('hex').slice(0, 16)
+    const filename = `${hash}.${ext}`
+    const assetsDir = path.join(cardDir, 'assets')
+    await fs.mkdir(assetsDir, { recursive: true })
+    await fs.writeFile(path.join(assetsDir, filename), input.bytes)
+    return { relativePath: `./assets/${filename}` }
+  })
+
   h('getConfig', VOID, async () => ctx.getConfig())
   h('updateConfig', z.record(z.any()), async (patch) => {
     const next = await patchConfig(configPath(), ctx.getConfig(), patch as Partial<Config>)
@@ -187,7 +209,7 @@ export function registerIpc(ctx: Ctx): () => void {
     ctx.watcher.off('card-removed', onRemoved)
     for (const ch of [
       'listNamespaces','listCards','getDueQueue','readCard','createCard','updateCard',
-      'moveCard','deleteCard','rateReview','openInExternalEditor','getConfig','updateConfig',
+      'moveCard','deleteCard','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
       'searchCards','rescan','getDashboardData'
     ]) ipcMain.removeHandler(ch)
   }

@@ -15,6 +15,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
   const [tags, setTags] = useState('')
   const [body, setBody] = useState('')
   const [loadedId, setLoadedId] = useState<string | null>(null)
+  const [cardPath, setCardPath] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const saveTimer = useRef<number | null>(null)
 
@@ -23,6 +24,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       unwrap(window.api.readCard(id)).then(c => {
         setQuestion(c.question); setNamespace(c.namespace); setTags(c.tags.join(', ')); setBody(c.body)
         setLoadedId(c.id)
+        setCardPath(c.path)
         setStatus('')
         if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
       })
@@ -36,6 +38,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       if (!question.trim()) { setStatus('Question required'); return }
       const created = await unwrap(window.api.createCard({ namespace, question, body, tags: tagsArr }))
       setLoadedId(created.id)
+      setCardPath(created.path)
       setStatus('Saved')
       await refreshNamespaces()
       navigate(`/editor/${created.id}`, { replace: true })
@@ -43,8 +46,10 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     }
     await unwrap(window.api.updateCard({ id: loadedId, question, body, tags: tagsArr }))
     const fresh = await unwrap(window.api.readCard(loadedId))
+    setCardPath(fresh.path)
     if (fresh.namespace !== namespace) {
-      await unwrap(window.api.moveCard({ id: loadedId, namespace }))
+      const moved = await unwrap(window.api.moveCard({ id: loadedId, namespace }))
+      setCardPath(moved.path)
       await refreshNamespaces()
     }
     setStatus('Saved')
@@ -125,12 +130,38 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       {/* Split body */}
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 min-w-0 bg-surface border-r border-border">
-          <CodeMirrorEditor value={body} onChange={(v) => { setBody(v); scheduleAutosave() }} />
+          <CodeMirrorEditor
+            value={body}
+            onChange={(v) => { setBody(v); scheduleAutosave() }}
+            onPasteImage={async (file) => {
+              let targetId = loadedId
+              if (!targetId) {
+                if (!question.trim()) { setStatus('Add a question before pasting images'); return null }
+                const tagsArr = tags.split(',').map(s => s.trim()).filter(Boolean)
+                const created = await unwrap(window.api.createCard({ namespace, question, body, tags: tagsArr }))
+                setLoadedId(created.id)
+                setCardPath(created.path)
+                await refreshNamespaces()
+                navigate(`/editor/${created.id}`, { replace: true })
+                targetId = created.id
+              }
+              const ext = (file.name.match(/\.([^.]+)$/)?.[1] ?? file.type.split('/')[1] ?? 'png').toLowerCase()
+              const bytes = new Uint8Array(await file.arrayBuffer())
+              try {
+                const res = await unwrap(window.api.saveAsset({ cardId: targetId, bytes, ext }))
+                setStatus('Image saved')
+                return res.relativePath
+              } catch (e) {
+                setStatus(e instanceof Error ? e.message : String(e))
+                return null
+              }
+            }}
+          />
         </div>
         <div className="flex-1 min-w-0 overflow-auto bg-bg">
           <div className="max-w-[620px] mx-auto px-8 py-10">
             {previewBody.trim() ? (
-              <MarkdownView content={previewBody} />
+              <MarkdownView content={previewBody} basePath={cardPath ?? undefined} />
             ) : (
               <div className="text-muted text-[14px] italic font-editorial">Preview appears here.</div>
             )}

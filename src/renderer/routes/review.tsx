@@ -101,7 +101,7 @@ export function ReviewRoute() {
           {revealed ? (
             <>
               <div className="h-px bg-border mb-8" />
-              <MarkdownView content={current.body} />
+              <MarkdownView content={current.body} basePath={current.path} />
               <div className="mt-14 pt-8 border-t border-border">
                 <div className="eyebrow mb-3">How well did you recall?</div>
                 <div className="flex flex-wrap gap-2">

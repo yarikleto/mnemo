@@ -32,6 +32,7 @@ export interface Api {
   deleteCard(id: string): Promise<ApiResult<void>>
   rateReview(input: { id: string; rating: Rating }): Promise<ApiResult<ReviewState>>
   openInExternalEditor(id: string): Promise<ApiResult<void>>
+  saveAsset(input: { cardId: string; bytes: Uint8Array; ext: string }): Promise<ApiResult<{ relativePath: string }>>
 
   getConfig(): Promise<ApiResult<Config>>
   updateConfig(patch: Partial<Config>): Promise<ApiResult<Config>>

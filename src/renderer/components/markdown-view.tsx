@@ -6,6 +6,7 @@ import remarkRehype from 'remark-rehype'
 import rehypeReact, { type Options } from 'rehype-react'
 import * as prod from 'react/jsx-runtime'
 import { getHighlighter } from 'shiki'
+import { resolveAssetUrl } from '../lib/asset-url'
 
 const reactOpts: Options = { jsx: prod.jsx, jsxs: prod.jsxs, Fragment: prod.Fragment }
 let highlighterPromise: ReturnType<typeof getHighlighter> | null = null
@@ -16,7 +17,7 @@ function getSharedHighlighter() {
   return highlighterPromise
 }
 
-export function MarkdownView({ content }: { content: string }) {
+export function MarkdownView({ content, basePath }: { content: string; basePath?: string }) {
   const [node, setNode] = useState<React.ReactNode>(null)
   useEffect(() => {
     let cancelled = false
@@ -36,13 +37,16 @@ export function MarkdownView({ content }: { content: string }) {
               const theme = document.documentElement.classList.contains('dark') ? 'github-dark' : 'github-light'
               const html = hl.codeToHtml(String(children).replace(/\n$/, ''), { lang, theme })
               return <div dangerouslySetInnerHTML={{ __html: html }} />
-            }
+            },
+            img: ({ src, alt, ...rest }: any) => (
+              <img src={resolveAssetUrl(String(src ?? ''), basePath)} alt={alt} {...rest} />
+            )
           }
         })
         .process(content)
       if (!cancelled) setNode(file.result as React.ReactNode)
     })()
     return () => { cancelled = true }
-  }, [content])
+  }, [content, basePath])
   return <div className="prose max-w-none font-serif text-[17px] leading-relaxed">{node}</div>
 }

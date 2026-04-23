@@ -4,14 +4,15 @@
 // no IPC, no app running required.
 //
 // Usage:
-//   create-card.mjs --namespace <ns> --question "<q>" [--tags "a,b,c"] \
-//                   (--body-file <path> | --body "<md>" | stdin)
+//   create-card.mjs --namespace <ns> --prompt "<q>" [--prompt "<alt>" ...] \
+//                   [--tags "a,b,c"] (--body-file <path> | --body "<md>" | stdin)
 //   create-card.mjs --help
 //
 // Options:
 //   --root <path>       Override mnemo root (default: read from config.json or ~/Documents/mnemo)
 //   --namespace <ns>    Folder under cards/ (e.g. "algorithms/graphs"). Required.
-//   --question <q>      Front-side prompt. Required.
+//   --prompt <text>     Front-side prompt. Repeatable — each additional --prompt adds a
+//                       variant (same answer, different phrasing). At least one required.
 //   --tags <csv>        Comma-separated tags. Optional.
 //   --body-file <p>     Read body markdown from file.
 //   --body <md>         Body markdown inline.
@@ -32,7 +33,8 @@ async function main() {
     return
   }
 
-  const question = required(args, 'question')
+  const prompts = args.prompt ?? []
+  if (prompts.length === 0) fail('missing required --prompt (may be given multiple times)')
   const namespace = required(args, 'namespace')
   const tags = args.tags
     ? args.tags.split(',').map((s) => s.trim()).filter(Boolean)
@@ -48,15 +50,18 @@ async function main() {
   const rootPath = args.root ?? (await discoverRoot())
   const nsDir = path.join(rootPath, 'cards', namespace)
 
-  const id = ulid()
+  const cardId = ulid()
   const created = new Date().toISOString()
-  const slug = slugify(question) || id.toLowerCase()
+  const slug = slugify(prompts[0]) || cardId.toLowerCase()
   const file = path.join(nsDir, `${slug}.md`)
+
+  const promptEntries = prompts.map((text) => ({ id: ulid(), text }))
 
   const fm = [
     '---',
-    `id: ${id}`,
-    `question: ${yamlString(question)}`,
+    `id: ${cardId}`,
+    'prompts:',
+    ...promptEntries.flatMap(renderPrompt),
     `tags:${tags.length ? '' : ' []'}`,
     ...tags.map((t) => `  - ${yamlString(t)}`),
     `created: '${created}'`,
@@ -81,6 +86,8 @@ async function main() {
 
 // --- helpers ---
 
+const REPEATABLE = new Set(['prompt'])
+
 function parseArgs(argv) {
   const out = {}
   for (let i = 0; i < argv.length; i++) {
@@ -91,7 +98,12 @@ function parseArgs(argv) {
     const next = argv[i + 1]
     if (key === 'dry-run') { out[key] = true; continue }
     if (next === undefined || next.startsWith('--')) fail(`missing value for --${key}`)
-    out[key] = next
+    if (REPEATABLE.has(key)) {
+      if (!out[key]) out[key] = []
+      out[key].push(next)
+    } else {
+      out[key] = next
+    }
     i++
   }
   return out
@@ -158,6 +170,17 @@ function yamlString(s) {
   return `'${String(s).replace(/'/g, "''")}'`
 }
 
+// Matches serializeCardFile / renderPrompt in src/main/markdown/parse.ts.
+function renderPrompt(p) {
+  const head = `  - id: ${p.id}`
+  if (p.text.includes('\n')) {
+    const lines = [head, '    text: |-']
+    for (const line of p.text.replace(/\n+$/, '').split('\n')) lines.push(`      ${line}`)
+    return lines
+  }
+  return [head, `    text: ${yamlString(p.text)}`]
+}
+
 function fail(msg) {
   process.stderr.write(`create-card: ${msg}\n`)
   process.exit(1)
@@ -167,13 +190,14 @@ function readHelp() {
   return `Create a mnemo card (.md with YAML frontmatter).
 
 Usage:
-  create-card.mjs --namespace <ns> --question "<q>" [--tags "a,b"] \\
-                  (--body-file <path> | --body "<md>" | stdin)
+  create-card.mjs --namespace <ns> --prompt "<q>" [--prompt "<alt>" ...] \\
+                  [--tags "a,b"] (--body-file <path> | --body "<md>" | stdin)
 
 Options:
   --root <path>       Override mnemo root (default: read from config.json)
   --namespace <ns>    Folder under cards/ (e.g. "algorithms/graphs"). Required.
-  --question <q>      Front-side prompt. Required.
+  --prompt <text>     Front-side prompt. Repeatable — each --prompt adds a variant
+                      (same answer body, different phrasing). At least one required.
   --tags <csv>        Comma-separated tags.
   --body-file <p>     Read markdown body from file.
   --body <md>         Inline markdown body.

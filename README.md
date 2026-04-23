@@ -10,6 +10,20 @@
   Scheduling uses <a href="https://github.com/open-spaced-repetition/ts-fsrs">FSRS</a>.
 </p>
 
+<p align="center">
+  <img src="./assets/screenshots/review-revealed.png" alt="Review with answer revealed" width="860"/>
+</p>
+
+<p align="center">
+  <img src="./assets/screenshots/browse.png" alt="Browse all cards" width="420"/>
+  &nbsp;
+  <img src="./assets/screenshots/dashboard.png" alt="Dashboard with due forecast and namespace ranking" width="420"/>
+</p>
+
+<p align="center">
+  <img src="./assets/screenshots/editor.png" alt="Card editor with live markdown preview" width="860"/>
+</p>
+
 ## Features
 
 - Plain-markdown cards with YAML front-matter
@@ -35,7 +49,11 @@ On first launch, pick a root folder — it becomes your vault.
 ```markdown
 ---
 id: 01HXYZABC...
-question: What does "常識" mean?
+prompts:
+  - id: 01HXYZPROMPT1...
+    text: 'What does **常識** (jōshiki) mean?'
+  - id: 01HXYZPROMPT2...
+    text: 'Give a sentence using 常識.'
 tags: [japanese, vocab]
 created: 2026-01-15T10:23:00.000Z
 ---
@@ -46,9 +64,11 @@ Free-form markdown. Explanations, code, diagrams — whatever helps you remember
 | Field | Meaning |
 |---|---|
 | `id` | ULID, auto-generated. The scheduler keys review state off this. |
-| `question` | Shown on the front of the card during review. |
+| `prompts` | One or more question variants. Each has its own ULID so the scheduler can keep edits stable across renames. During review, one prompt is picked at random. |
 | `tags` | Free-form, used for filtering and search. |
 | `created` | ISO 8601 timestamp. |
+
+The body below the front-matter is the shared answer, shown after you reveal — same for every prompt on the card.
 
 Review state (stability, difficulty, due date, history) lives in a separate `state/` directory next to your cards, so your markdown stays clean and diff-friendly.
 

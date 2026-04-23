@@ -4,7 +4,8 @@ import { ulid } from '../id'
 import { parseCardFile, serializeCardFile } from '../markdown/parse'
 import { atomicWrite, hashBody } from '../atomic-write'
 import { cardsDir, namespaceFromPath } from '../paths'
-import type { CardFull, CardMeta } from '../../shared/schema'
+import type { CardFull, CardMeta, PromptFrontmatter } from '../../shared/schema'
+import { promptPreview } from '../../shared/prompt'
 
 export async function walkCardFiles(rootPath: string): Promise<string[]> {
   const root = cardsDir(rootPath)
@@ -44,16 +45,18 @@ export function toMeta(full: CardFull): CardMeta {
 
 export async function createCardOnDisk(
   rootPath: string,
-  args: { namespace: string; question: string; body: string; tags?: string[] }
+  args: { namespace: string; prompts: string[]; body: string; tags?: string[] }
 ): Promise<CardFull> {
+  if (!args.prompts.length) throw new Error('At least one prompt is required')
   const id = ulid()
   const now = new Date().toISOString()
   const dir = path.join(cardsDir(rootPath), args.namespace)
   await fs.mkdir(dir, { recursive: true })
-  const slug = slugify(args.question)
-  const file = path.join(dir, `${slug || id}.md`)
+  const prompts: PromptFrontmatter[] = args.prompts.map(text => ({ id: ulid(), text }))
+  const slug = slugify(promptPreview(prompts[0]!.text, 80))
+  const file = await uniquePath(dir, slug || id, id)
   const raw = serializeCardFile(
-    { id, question: args.question, tags: args.tags ?? [], created: now },
+    { id, prompts, tags: args.tags ?? [], created: now },
     args.body
   )
   await atomicWrite(file, raw)
@@ -62,13 +65,13 @@ export async function createCardOnDisk(
 
 export async function updateCardOnDisk(
   absPath: string,
-  patch: { question?: string; body?: string; tags?: string[] }
+  patch: { prompts?: PromptFrontmatter[]; body?: string; tags?: string[] }
 ): Promise<void> {
   const raw = await fs.readFile(absPath, 'utf8')
   const { frontmatter, body } = parseCardFile(raw)
   const nextFm = {
     ...frontmatter,
-    question: patch.question ?? frontmatter.question,
+    prompts: patch.prompts ?? frontmatter.prompts,
     tags: patch.tags ?? frontmatter.tags
   }
   const nextBody = patch.body ?? body
@@ -96,4 +99,17 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
+}
+
+async function uniquePath(dir: string, base: string, id: string): Promise<string> {
+  const first = path.join(dir, `${base}.md`)
+  if (!(await exists(first))) return first
+  const suffix = id.slice(-6).toLowerCase()
+  const withSuffix = path.join(dir, `${base}-${suffix}.md`)
+  if (!(await exists(withSuffix))) return withSuffix
+  return path.join(dir, `${base}-${id.toLowerCase()}.md`)
+}
+
+async function exists(p: string): Promise<boolean> {
+  try { await fs.access(p); return true } catch { return false }
 }

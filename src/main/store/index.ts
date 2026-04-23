@@ -3,7 +3,7 @@ import type { CardMeta } from '../../shared/schema'
 
 export class CardIndex {
   private byId = new Map<string, CardMeta>()
-  private byPath = new Map<string, string>() // path → id
+  private byPath = new Map<string, string>()
 
   async buildFrom(rootPath: string): Promise<void> {
     this.byId.clear()
@@ -14,10 +14,9 @@ export class CardIndex {
         const full = await readCardAtPath(rootPath, p)
         const { body, ...meta } = full
         void body
-        this.byId.set(meta.id, meta)
-        this.byPath.set(meta.path, meta.id)
+        this.upsert(meta)
       } catch (_err) {
-        // corrupt frontmatter — skip (surfaced via rescan diagnostics in future)
+        // corrupt frontmatter — skip
       }
     }
   }
@@ -42,7 +41,8 @@ export class CardIndex {
   }
   removeByPath(p: string): string | undefined {
     const id = this.byPath.get(p)
-    if (id) { this.byId.delete(id); this.byPath.delete(p) }
+    if (!id) return undefined
+    this.removeById(id)
     return id
   }
 }

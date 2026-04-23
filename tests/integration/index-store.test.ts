@@ -15,15 +15,15 @@ describe('CardIndex', () => {
   })
 
   it('builds from a directory of cards', async () => {
-    await createCardOnDisk(root, { namespace: 'a', question: 'Q1', body: 'B1' })
-    await createCardOnDisk(root, { namespace: 'a/b', question: 'Q2', body: 'B2' })
+    await createCardOnDisk(root, { namespace: 'a', prompts: ['Q1'], body: 'B1' })
+    await createCardOnDisk(root, { namespace: 'a/b', prompts: ['Q2'], body: 'B2' })
     const idx = new CardIndex()
     await idx.buildFrom(root)
     expect(idx.all()).toHaveLength(2)
   })
 
   it('upsert and removeById', async () => {
-    const c = await createCardOnDisk(root, { namespace: 'a', question: 'Q', body: 'B' })
+    const c = await createCardOnDisk(root, { namespace: 'a', prompts: ['Q'], body: 'B' })
     const idx = new CardIndex()
     await idx.buildFrom(root)
     expect(idx.get(c.id)).toBeDefined()

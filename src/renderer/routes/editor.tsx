@@ -31,17 +31,18 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     }
   }, [mode, id])
 
-  const save = async () => {
+  const save = async (explicit = false) => {
     const tagsArr = tags.split(',').map(s => s.trim()).filter(Boolean)
     if (mode === 'new' || !loadedId) {
       if (mode !== 'new') return
-      if (!question.trim()) { setStatus('Question required'); return }
+      if (!question.trim()) { if (explicit) setStatus('Question required'); return }
       const created = await unwrap(window.api.createCard({ namespace, question, body, tags: tagsArr }))
       setLoadedId(created.id)
       setCardPath(created.path)
       setStatus('Saved')
       await refreshNamespaces()
-      navigate(`/editor/${created.id}`, { replace: true })
+      if (explicit) navigate('/browse')
+      else navigate(`/editor/${created.id}`, { replace: true })
       return
     }
     await unwrap(window.api.updateCard({ id: loadedId, question, body, tags: tagsArr }))
@@ -57,12 +58,12 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
 
   const scheduleAutosave = () => {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => { save() }, 2000)
+    saveTimer.current = window.setTimeout(() => { save(false) }, 2000)
   }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save() }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(true) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -102,7 +103,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
               )}
               <button onClick={openExternal} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px]">Open externally</button>
               <button onClick={remove} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px] !text-danger hover:!border-danger/60">Delete</button>
-              <button onClick={save} className="btn-primary !py-1.5 !px-4 !text-[12px]">
+              <button onClick={() => save(true)} className="btn-primary !py-1.5 !px-4 !text-[12px]">
                 Save <span className="kbd !bg-white/20 !border-white/25 !text-white !shadow-none !h-[1.1rem] !text-[10px]">⌘S</span>
               </button>
             </div>

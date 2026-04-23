@@ -54,6 +54,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       await refreshNamespaces()
     }
     setStatus('Saved')
+    if (explicit) navigate(`/card/${loadedId}`)
   }
 
   const scheduleAutosave = () => {

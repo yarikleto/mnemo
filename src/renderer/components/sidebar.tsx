@@ -1,8 +1,13 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { NamespaceTree } from './namespace-tree'
 import { ThemeToggle } from './theme-toggle'
+import { ExportDialog } from './export-dialog'
+import { ImportDialog } from './import-dialog'
 
 export function Sidebar() {
+  const [exportOpen, setExportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const links = [
     { to: '/review',    label: 'Review' },
     { to: '/browse',    label: 'Browse' },
@@ -34,8 +39,24 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-5 pt-7 pb-2">
-        <div className="eyebrow">Namespaces</div>
+      <div className="px-5 pt-7 pb-2 flex items-center justify-between">
+        <div className="eyebrow">Decks</div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setExportOpen(true)}
+            title="Export cards to archive"
+            className="text-[11px] text-muted hover:text-fg px-1.5 py-0.5 rounded"
+          >
+            Export
+          </button>
+          <button
+            onClick={() => setImportOpen(true)}
+            title="Import cards from archive"
+            className="text-[11px] text-muted hover:text-fg px-1.5 py-0.5 rounded"
+          >
+            Import
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-auto px-1.5"><NamespaceTree /></div>
 
@@ -45,6 +66,8 @@ export function Sidebar() {
         </NavLink>
         <ThemeToggle />
       </div>
+      {exportOpen && <ExportDialog onClose={() => setExportOpen(false)} />}
+      {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
     </aside>
   )
 }

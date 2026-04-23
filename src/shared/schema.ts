@@ -57,7 +57,7 @@ export const ConfigSchema = z.object({
   }),
   fsrs: z.object({
     desiredRetention: z.number().min(0.5).max(0.99).default(0.9),
-    maximumInterval: z.number().int().positive().default(36500)
+    maximumInterval: z.number().int().positive().default(365)
   }),
   externalEditor: z.string().nullable().default(null)
 })
@@ -75,6 +75,6 @@ export const DEFAULT_CONFIG: Omit<Config, 'rootPath'> = {
       { id: 'key-stats', enabled: false, order: 5 }
     ]
   },
-  fsrs: { desiredRetention: 0.9, maximumInterval: 36500 },
+  fsrs: { desiredRetention: 0.9, maximumInterval: 365 },
   externalEditor: null
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { WIDGET_IDS, type WidgetId } from '../../shared/constants'
+import { WIDGET_INFO, type WidgetId } from '../../shared/constants'
 import type { Config } from '../../shared/schema'
 import { useAppStore } from '../stores/app-store'
 import { unwrap } from '../lib/api'
@@ -58,14 +58,20 @@ export function SettingsRoute() {
       <section className="mb-10">
         {sectionHeading('Dashboard widgets')}
         <div className="card-surface divide-y divide-border overflow-hidden">
-          {sorted.map(w => (
-            <div key={w.id} className="flex items-center gap-3 px-4 py-2.5">
-              <input type="checkbox" checked={w.enabled} onChange={() => toggle(w.id)} className="w-3.5 h-3.5" />
-              <span className="flex-1 text-[13px] font-mono">{w.id}</span>
-              <button onClick={() => move(w.id, -1)} className="btn-ghost !p-1.5 text-muted hover:text-fg" aria-label="Move up">↑</button>
-              <button onClick={() => move(w.id, 1)}  className="btn-ghost !p-1.5 text-muted hover:text-fg" aria-label="Move down">↓</button>
-            </div>
-          ))}
+          {sorted.map(w => {
+            const info = WIDGET_INFO[w.id]
+            return (
+              <div key={w.id} className="flex items-center gap-3 px-4 py-3">
+                <input type="checkbox" checked={w.enabled} onChange={() => toggle(w.id)} className="w-3.5 h-3.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium">{info.title}</div>
+                  <div className="text-[11.5px] text-muted mt-0.5 leading-snug">{info.description}</div>
+                </div>
+                <button onClick={() => move(w.id, -1)} className="btn-ghost !p-1.5 text-muted hover:text-fg shrink-0" aria-label="Move up">↑</button>
+                <button onClick={() => move(w.id, 1)}  className="btn-ghost !p-1.5 text-muted hover:text-fg shrink-0" aria-label="Move down">↓</button>
+              </div>
+            )
+          })}
         </div>
       </section>
 
@@ -100,7 +106,6 @@ export function SettingsRoute() {
           onChange={e => setExternalEditor(e.target.value)}
           className="input w-full font-mono" />
         <p className="text-[12px] text-muted mt-2 italic">Leave blank to use the system default opener.</p>
-        <p className="text-[11px] text-muted mt-3 font-mono">Widgets: {WIDGET_IDS.join(' · ')}</p>
       </section>
     </div>
   )

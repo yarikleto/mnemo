@@ -26,6 +26,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     window.api.onCardAdded(() => get().refreshNamespaces())
     window.api.onCardRemoved(() => get().refreshNamespaces())
     window.api.onCardChanged(() => get().refreshNamespaces())
+    window.api.onReviewRated(() => get().refreshNamespaces())
   },
   async refreshNamespaces() {
     const namespaces = await unwrap(window.api.listNamespaces())

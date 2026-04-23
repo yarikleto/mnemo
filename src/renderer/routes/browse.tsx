@@ -77,7 +77,7 @@ export function BrowseRoute() {
                 {filtered.map((r, i) => (
                   <tr
                     key={r.id}
-                    onClick={() => navigate(`/editor/${r.id}`)}
+                    onClick={() => navigate(`/card/${r.id}`)}
                     className={`group cursor-pointer transition-colors hover:bg-accent/5 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
                   >
                     <td className="px-4 py-3 font-editorial text-[14.5px] text-fg">{r.question}</td>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { CardFull } from '../../shared/schema'
 import { unwrap } from '../lib/api'
+import { promptPreview } from '../../shared/prompt'
 import { useAppStore } from '../stores/app-store'
 import { MarkdownView } from '../components/markdown-view'
 
@@ -50,7 +51,8 @@ export function CardViewRoute() {
 
   const remove = async () => {
     if (!card) return
-    const confirmed = window.confirm(`Delete "${card.question}"? This cannot be undone.`)
+    const label = promptPreview(card.prompts[0]?.text ?? '', 80) || 'this card'
+    const confirmed = window.confirm(`Delete "${label}"? This cannot be undone.`)
     if (!confirmed) return
     await unwrap(window.api.deleteCard(card.id))
     await refreshNamespaces()
@@ -86,9 +88,20 @@ export function CardViewRoute() {
         <div className="max-w-[720px] mx-auto px-8 pt-12 pb-24">
           <div className="eyebrow mb-5">{breadcrumb || 'root'}</div>
 
-          <h1 className="font-editorial text-[30px] leading-[1.25] font-semibold text-fg mb-8 tracking-[-0.015em]">
-            {card.question}
-          </h1>
+          <div className="mb-8">
+            {card.prompts.map((p, i) => (
+              <div key={p.id} className={i === 0 ? '' : 'mt-6 pt-6 border-t border-border/50'}>
+                {card.prompts.length > 1 && (
+                  <div className="eyebrow mb-3 text-muted">Prompt {i + 1} / {card.prompts.length}</div>
+                )}
+                <MarkdownView
+                  content={p.text}
+                  basePath={card.path}
+                  className="prose-question font-editorial text-[24px] leading-[1.3] font-semibold text-fg tracking-[-0.015em] max-w-none"
+                />
+              </div>
+            ))}
+          </div>
 
           {card.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-10">

@@ -1,4 +1,4 @@
-import { FSRS, generatorParameters, Rating as FsrsRating, type Card as FsrsCard, State as FsrsStateEnum } from 'ts-fsrs'
+import { FSRS, generatorParameters, Rating as FsrsRating, type Card as FsrsCard, State as FsrsStateEnum, type Grade } from 'ts-fsrs'
 import type { ReviewState } from '../../shared/schema'
 import type { Rating } from '../../shared/constants'
 
@@ -24,11 +24,11 @@ const reverseStateMap: Record<FsrsStateEnum, ReviewState['state']> = {
   [FsrsStateEnum.Review]: 'Review',
   [FsrsStateEnum.Relearning]: 'Relearning'
 }
-const ratingMap: Record<Rating, FsrsRating> = {
-  Again: FsrsRating.Again,
-  Hard: FsrsRating.Hard,
-  Good: FsrsRating.Good,
-  Easy: FsrsRating.Easy
+const ratingMap: Record<Rating, Grade> = {
+  Again: FsrsRating.Again as Grade,
+  Hard: FsrsRating.Hard as Grade,
+  Good: FsrsRating.Good as Grade,
+  Easy: FsrsRating.Easy as Grade
 }
 
 function toFsrsCard(s: ReviewState): FsrsCard {

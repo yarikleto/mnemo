@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Sidebar } from './components/sidebar'
 import { useAppStore } from './stores/app-store'
 import { ReviewRoute } from './routes/review'
@@ -14,6 +14,7 @@ export function App() {
   if (!config) return <div className="h-full flex items-center justify-center text-muted italic font-editorial">Loading…</div>
   return (
     <HashRouter>
+      <GlobalShortcuts />
       <div className="flex h-full">
         <Sidebar />
         <main className="flex-1 overflow-auto">
@@ -30,4 +31,19 @@ export function App() {
       </div>
     </HashRouter>
   )
+}
+
+function GlobalShortcuts() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const k = e.key.toLowerCase()
+      if (k === 'n') { e.preventDefault(); navigate('/editor/new') }
+      else if (k === ',') { e.preventDefault(); navigate('/settings') }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate])
+  return null
 }

@@ -38,6 +38,15 @@ After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify 
 
 Known gotcha the skill catches: `webPreferences.preload` in `src/main/index.ts` must point at the `.mjs` output emitted by `vite-plugin-electron`, not `.js`. Also: do not introduce PRNG-detecting libs (`ulid`, some `uuid`) into the main bundle — they crash on ESM import. A node-`crypto` ULID lives at `src/main/id.ts`; use that.
 
+### Authoring cards
+
+Two tools, different jobs:
+
+- **`card-researcher` subagent** (`.claude/agents/card-researcher.md`) — use when the user asks you to **research a topic and turn it into cards**. Triggers: "make me cards about X", "learn me Rust ownership", "drill me on the French subjunctive", "research X and quiz me", any batch-of-cards-on-an-unfamiliar-topic request. The agent does its own web research, decomposes the topic into atomic cards, writes 2–3 prompt variants per card (different retrieval angles: mechanism / scenario / consequence), and saves them via the `creating-card` skill. Delegate via the Agent tool with `subagent_type: "card-researcher"`; pass the topic plus any constraints (count, namespace, angle, language) in the prompt.
+- **`creating-card` skill** (`.claude/skills/creating-card/SKILL.md`) — use when the user hands you **the card content already** (a single explanation they wrote, a conversation snippet, a paragraph from a doc) and just wants it committed as a card. No research needed, no batching — just format and write. The skill's helper script (`scripts/create-card.mjs`) is also what the subagent shells out to.
+
+Do NOT use the subagent to turn a single already-written note into one card — that's overkill and burns research tokens. Do NOT hand-roll card YAML yourself when the skill exists.
+
 ## Architecture
 
 Electron app with three processes and a strict boundary between them.

@@ -1,6 +1,6 @@
 ---
 name: creating-card
-description: Use when the user asks you to create a mnemo flashcard (or a batch of them), turn a topic / conversation / document into cards, or author a `.md` card file for this Electron app. Also use when someone says "make me a card about X" and expects a polished question + answer written to disk.
+description: Use when the user asks you to create a mnemo flashcard (or a batch of them), turn a topic / conversation / document into cards, or author a `.md` card file for this Electron app. Also use when someone says "make me a card about X" and expects a polished prompt + answer written to disk.
 ---
 
 # Creating a mnemo card
@@ -12,7 +12,7 @@ One `.md` file under `<rootPath>/cards/<namespace>/<slug>.md` with YAML frontmat
 Schema (enforced by `src/shared/schema.ts`, `CardFrontmatterSchema`):
 
 - `id` — ULID, 26 chars, Crockford base32. Must be unique across the whole store.
-- `question` — non-empty string. This is the front of the card; it's what the user sees before "show answer".
+- `prompts` — non-empty array of `{ id: ULID, text: string }`. Each entry is a *variant* of the card's front: the review UI picks one to show, they all resolve to the same answer body. Use one prompt by default; add more only when you want to drill the same fact from multiple angles.
 - `tags` — array of strings (can be empty).
 - `created` — ISO 8601 datetime (`2026-04-23T13:33:54.725Z`).
 
@@ -25,8 +25,18 @@ Don't hand-roll ULIDs or frontmatter. The script handles root discovery, ULID, s
 ```bash
 ./.claude/skills/creating-card/scripts/create-card.mjs \
   --namespace "algorithms/graphs" \
-  --question "What does BFS guarantee on an unweighted graph?" \
+  --prompt "What does BFS guarantee on an unweighted graph?" \
   --tags "algorithms,graphs,bfs" \
+  --body-file /tmp/body.md
+```
+
+`--prompt` is repeatable. Pass it more than once to attach phrasing variants to the same card:
+
+```bash
+./.claude/skills/creating-card/scripts/create-card.mjs \
+  --namespace "system-design/caching" \
+  --prompt "Why is write-through slower than write-back on hot writes?" \
+  --prompt "On a hot key, which caching policy issues more backing-store writes, and why?" \
   --body-file /tmp/body.md
 ```
 
@@ -40,13 +50,16 @@ Creating many cards: call the script once per card. Don't write a wrapper that t
 
 This is where the LLM earns its keep. The script guarantees the file is valid; you are responsible for the card being *learnable*.
 
-### Question (front)
+### Prompts (front)
+
+Every card has at least one prompt. A second or third prompt is a *rephrasing of the same question* — not a follow-up, not a related fact. All variants resolve to the same answer body, so if two phrasings wouldn't share an answer they should be two separate cards.
 
 - **One idea per card.** If the answer has multiple parts, split it into multiple cards.
 - **Specific, not generic.** "What is a B-tree?" is weak — the answer could be a paragraph or a book. "Why do B-trees use high branching factors?" forces one focused answer.
-- **Context-free.** The question must stand alone. No "in the previous card…", no pronouns pointing nowhere. Someone seeing this card in 6 months, out of order, should know exactly what's being asked.
+- **Context-free.** The prompt must stand alone. No "in the previous card…", no pronouns pointing nowhere. Someone seeing this card in 6 months, out of order, should know exactly what's being asked.
 - **Active recall, not recognition.** Avoid yes/no or multiple-choice phrasing. Ask for a reason, a mechanism, a value, a steps-list.
-- **Plain text, ~120 chars.** It appears in the review UI on one line. If the question *needs* markdown (a snippet, a formula), it's usually two cards: one prose question, one "complete this code" card.
+- **Plain text, ~120 chars.** It appears in the review UI on one line. If a prompt *needs* markdown (a snippet, a formula), it's usually two cards: one prose prompt, one "complete this code" card.
+- **Use extra prompts sparingly.** Default to one. Add a second variant only when the concept is worth drilling from two distinct angles (e.g., forward and reverse direction of a definition), and each variant still stands alone under the rules above.
 
 ### Body (back)
 
@@ -82,7 +95,9 @@ Good card (`cards/system-design/caching/why-write-through-is-slower-than-write-b
 ```markdown
 ---
 id: 01KPX8RQK2WVTQW0ANJXJ8FM8Q
-question: 'Why is write-through caching slower than write-back on hot writes?'
+prompts:
+  - id: 01KPX8RQK3A7NE6YH4N8C0JDPK
+    text: 'Why is write-through caching slower than write-back on hot writes?'
 tags:
   - 'system-design'
   - 'caching'
@@ -95,11 +110,11 @@ created: '2026-04-23T13:34:14.626Z'
 A hot key hit 1000×/sec under write-through issues 1000 sync writes to the slow store. Under write-back, those coalesce in the cache and flush as one eviction — O(evictions) disk IO, not O(writes). The trade: write-back loses un-flushed writes on crash, so durability-critical systems pick write-through anyway.
 ```
 
-What makes it work: question is specific and asks *why* (forces a mechanism answer); first sentence of the body is the whole answer in compressed form; second paragraph is the intuition + the tradeoff; no meta, no filler; markdown is used exactly twice (bold on the two key terms).
+What makes it work: prompt is specific and asks *why* (forces a mechanism answer); first sentence of the body is the whole answer in compressed form; second paragraph is the intuition + the tradeoff; no meta, no filler; markdown is used exactly twice (bold on the two key terms).
 
 ## Common mistakes
 
-- **Editing an existing card's `id`, `created`, or file path by hand.** The `id` is a primary key; `created` is used for stats; the path encodes the namespace. Change question or body freely — leave identity alone. To move a card, use the app's Browse → Move UI (it handles the rename + index update atomically).
+- **Editing an existing card's `id`, prompt `id`s, `created`, or file path by hand.** The card `id` is a primary key; each prompt `id` is referenced by FSRS review state; `created` is used for stats; the path encodes the namespace. Change prompt `text` or body freely — leave identity alone. To move a card, use the app's Browse → Move UI (it handles the rename + index update atomically).
 - **Writing to `state/`.** That's FSRS-owned data keyed by card `id`. Never create or edit those files.
 - **Non-ISO `created` timestamps.** Zod rejects the card and the watcher silently skips it. The script formats this correctly — don't override it.
 - **ULID collisions from copy-paste.** If you're tempted to duplicate a card by copying the file, *don't*. Run the script twice. Two cards must never share an `id`.

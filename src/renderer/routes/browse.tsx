@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CardMeta } from '../../shared/schema'
 import { unwrap } from '../lib/api'
+import { promptPreview } from '../../shared/prompt'
 import { useAppStore } from '../stores/app-store'
+
+function firstPromptPreview(c: CardMeta): string {
+  return promptPreview(c.prompts[0]?.text ?? '', 160) || '(empty prompt)'
+}
 
 export function BrowseRoute() {
   const navigate = useNavigate()
@@ -22,7 +27,8 @@ export function BrowseRoute() {
 
   const handleDelete = async (e: React.MouseEvent, r: CardMeta) => {
     e.stopPropagation()
-    const confirmed = window.confirm(`Delete "${r.question}"? This cannot be undone.`)
+    const label = firstPromptPreview(r)
+    const confirmed = window.confirm(`Delete "${label}"? This cannot be undone.`)
     if (!confirmed) return
     await unwrap(window.api.deleteCard(r.id))
     setRows(rows => rows.filter(x => x.id !== r.id))
@@ -34,7 +40,7 @@ export function BrowseRoute() {
     return rows.filter(r => {
       if (selectedNamespaces.length && !selectedNamespaces.some(ns => r.namespace === ns || r.namespace.startsWith(ns + '/'))) return false
       if (!lc) return true
-      return r.question.toLowerCase().includes(lc) || r.tags.some(t => t.toLowerCase().includes(lc))
+      return r.prompts.some(p => p.text.toLowerCase().includes(lc)) || r.tags.some(t => t.toLowerCase().includes(lc))
     })
   }, [rows, query, selectedNamespaces])
 
@@ -52,7 +58,7 @@ export function BrowseRoute() {
         </div>
         <input
           value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Search questions or tags…"
+          placeholder="Search prompts or tags…"
           className="input w-full mt-5"
         />
       </div>
@@ -67,7 +73,7 @@ export function BrowseRoute() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="eyebrow !text-left px-4 py-2.5">Question</th>
+                  <th className="eyebrow !text-left px-4 py-2.5">Prompt</th>
                   <th className="eyebrow !text-left px-4 py-2.5 w-56">Namespace</th>
                   <th className="eyebrow !text-left px-4 py-2.5 w-48">Tags</th>
                   <th className="w-10" />
@@ -80,7 +86,14 @@ export function BrowseRoute() {
                     onClick={() => navigate(`/card/${r.id}`)}
                     className={`group cursor-pointer transition-colors hover:bg-accent/5 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
                   >
-                    <td className="px-4 py-3 font-editorial text-[14.5px] text-fg">{r.question}</td>
+                    <td className="px-4 py-3 font-editorial text-[14.5px] text-fg">
+                      <span>{firstPromptPreview(r)}</span>
+                      {r.prompts.length > 1 && (
+                        <span className="ml-2 align-middle text-[11px] font-mono text-muted bg-border/40 rounded px-1.5 py-0.5">
+                          +{r.prompts.length - 1}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-mono text-[11.5px] text-muted">{r.namespace || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -92,7 +105,7 @@ export function BrowseRoute() {
                     <td className="px-3 py-3 text-right">
                       <button
                         onClick={e => handleDelete(e, r)}
-                        aria-label={`Delete ${r.question}`}
+                        aria-label={`Delete card`}
                         className="opacity-0 group-hover:opacity-100 transition-opacity text-[12px] text-muted hover:text-danger px-2 py-1"
                       >
                         ✕

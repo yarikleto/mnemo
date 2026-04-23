@@ -4,10 +4,9 @@ import { atomicWrite } from '../atomic-write'
 import { ReviewStateSchema, type ReviewState } from '../../shared/schema'
 
 export function newState(id: string): ReviewState {
-  const nowIso = new Date().toISOString()
   return {
     id,
-    due: nowIso,
+    due: '1970-01-01T00:00:00.000Z',
     stability: 0,
     difficulty: 0,
     elapsed_days: 0,

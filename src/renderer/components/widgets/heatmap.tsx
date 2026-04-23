@@ -1,5 +1,7 @@
 import type { DashboardData } from '../../../shared/api'
 import { useNavigate } from 'react-router-dom'
+import { promptPreview } from '../../../shared/prompt'
+
 export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatmap']> }) {
   const navigate = useNavigate()
   const color = (r: number) => {
@@ -21,8 +23,8 @@ export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatm
       </div>
       <div className="flex flex-wrap gap-1">
         {data.map(c => (
-          <div key={c.id} onClick={() => navigate(`/card/${c.id}`)}
-               title={`${c.question} · ${Math.round(c.retention * 100)}%`}
+          <div key={c.cardId} onClick={() => navigate(`/card/${c.cardId}`)}
+               title={`${promptPreview(c.promptText, 80)} · ${Math.round(c.retention * 100)}%`}
                className={`w-3.5 h-3.5 rounded-[2px] cursor-pointer transition hover:scale-125 hover:shadow-sm ${color(c.retention)}`} />
         ))}
       </div>

@@ -1,9 +1,15 @@
 import { z } from 'zod'
 import { RATINGS, FSRS_STATES, WIDGET_IDS } from './constants'
 
+export const PromptFrontmatterSchema = z.object({
+  id: z.string().min(1),
+  text: z.string().min(1)
+})
+export type PromptFrontmatter = z.infer<typeof PromptFrontmatterSchema>
+
 export const CardFrontmatterSchema = z.object({
   id: z.string().min(1),
-  question: z.string().min(1),
+  prompts: z.array(PromptFrontmatterSchema).min(1),
   tags: z.array(z.string()).default([]),
   created: z.string().datetime()
 })

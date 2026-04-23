@@ -12,7 +12,8 @@ import { exportCardsWithDialog, pickImportFileWithDialog } from '../archive/dial
 import { importArchive } from '../archive/import'
 import { patchConfig } from '../store/config'
 import { configPath, cardsDir } from '../paths'
-import type { Config } from '../../shared/schema'
+import { ulid } from '../id'
+import type { Config, PromptFrontmatter } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
 import type { Watcher } from '../watcher'
@@ -80,7 +81,7 @@ export function registerIpc(ctx: Ctx): () => void {
     const rootPath = ctx.getConfig().rootPath
     const counts = new Map<string, number>()
     const due = await buildDueQueue(rootPath, ctx.index)
-    for (const m of due) counts.set(m.namespace, (counts.get(m.namespace) ?? 0) + 1)
+    for (const p of due) counts.set(p.namespace, (counts.get(p.namespace) ?? 0) + 1)
     return namespacesFromIndex(ctx.index, counts)
   })
 
@@ -100,7 +101,7 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('createCard', z.object({
     namespace: z.string(),
-    question: z.string().min(1),
+    prompts: z.array(z.string().min(1)).min(1),
     body: z.string(),
     tags: z.array(z.string()).optional()
   }), async (input) => {
@@ -114,14 +115,25 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('updateCard', z.object({
     id: z.string(),
-    question: z.string().optional(),
+    prompts: z.array(z.object({ id: z.string().optional(), text: z.string().min(1) })).min(1).optional(),
     body: z.string().optional(),
     tags: z.array(z.string()).optional()
   }), async (input) => {
     const rootPath = ctx.getConfig().rootPath
     const meta = ctx.index.get(input.id)
     if (!meta) throw new Error(`Card not found: ${input.id}`)
-    await updateCardOnDisk(meta.path, input)
+
+    let nextPrompts: PromptFrontmatter[] | undefined = undefined
+    if (input.prompts) {
+      nextPrompts = input.prompts.map(p => ({ id: p.id ?? ulid(), text: p.text }))
+    }
+
+    await updateCardOnDisk(meta.path, {
+      prompts: nextPrompts,
+      body: input.body,
+      tags: input.tags
+    })
+
     const full = await readCardAtPath(rootPath, meta.path)
     ctx.watcher.suppressNext(full.path, full.mtime, full.bodyHash)
     const { body: _b, ...nextMeta } = full; void _b
@@ -163,13 +175,13 @@ export function registerIpc(ctx: Ctx): () => void {
     return { deleted: toDelete.length }
   })
 
-  h('rateReview', z.object({ id: z.string(), rating: z.enum(RATINGS) }), async (input) => {
+  h('rateReview', z.object({ cardId: z.string(), rating: z.enum(RATINGS) }), async (input) => {
     const cfg = ctx.getConfig()
     const scheduler = createScheduler(cfg.fsrs)
-    const current = await readState(cfg.rootPath, input.id)
+    const current = await readState(cfg.rootPath, input.cardId)
     const next = rateCard(scheduler, current, input.rating)
     await writeState(cfg.rootPath, next)
-    ctx.win.webContents.send('review-rated', input.id)
+    ctx.win.webContents.send('review-rated', input.cardId)
     return next
   })
 
@@ -207,7 +219,10 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('searchCards', z.string(), async (q) => {
     const lc = q.toLowerCase()
-    return ctx.index.all().filter(m => m.question.toLowerCase().includes(lc) || m.tags.some(t => t.toLowerCase().includes(lc)))
+    return ctx.index.all().filter(m =>
+      m.prompts.some(p => p.text.toLowerCase().includes(lc)) ||
+      m.tags.some(t => t.toLowerCase().includes(lc))
+    )
   })
 
   h('rescan', VOID, async () => {
@@ -248,7 +263,7 @@ export function registerIpc(ctx: Ctx): () => void {
   ctx.watcher.on('card-changed', onChanged)
   ctx.watcher.on('card-removed', onRemoved)
 
-  // Orphan state cleanup on startup
+  // Orphan state cleanup on startup: any state keyed by an unknown card id gets removed.
   listStateIds(ctx.getConfig().rootPath).then(ids => {
     for (const id of ids) if (!ctx.index.get(id)) deleteState(ctx.getConfig().rootPath, id)
   })
@@ -270,7 +285,11 @@ async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<Dashboar
   const cfg = ctx.getConfig()
   const rootPath = cfg.rootPath
   const all = ctx.index.all()
-  const states = await Promise.all(all.map(async m => ({ meta: m, state: await readState(rootPath, m.id) })))
+  const cards: Array<{ cardId: string; namespace: string; firstPromptText: string; state: ReviewState }> = []
+  for (const card of all) {
+    const state = await readState(rootPath, card.id)
+    cards.push({ cardId: card.id, namespace: card.namespace, firstPromptText: card.prompts[0]?.text ?? '', state })
+  }
   const result: DashboardData = {}
 
   const dayKey = (d: Date) => d.toISOString().slice(0, 10)
@@ -280,7 +299,7 @@ async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<Dashboar
     const todayKey = dayKey(new Date())
     const next7: number[] = Array(7).fill(0)
     let today = 0
-    for (const { state } of states) {
+    for (const { state } of cards) {
       const due = new Date(state.due).getTime()
       const diffDays = Math.floor((due - now) / 86_400_000)
       if (due <= now || dayKey(new Date(due)) === todayKey) today++
@@ -290,12 +309,12 @@ async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<Dashboar
   }
 
   if (widgets.includes('namespace-ranking')) {
-    const byNs = new Map<string, { total: number; reps: number; sumRetention: number; count: number }>()
-    for (const { meta, state } of states) {
-      const k = meta.namespace || '(root)'
+    const byNs = new Map<string, { total: number; sumRetention: number; count: number }>()
+    for (const { namespace, state } of cards) {
+      const k = namespace || '(root)'
       const r = retention(state)
-      const cur = byNs.get(k) ?? { total: 0, reps: 0, sumRetention: 0, count: 0 }
-      cur.total++; cur.reps += state.reps; cur.sumRetention += r; cur.count++
+      const cur = byNs.get(k) ?? { total: 0, sumRetention: 0, count: 0 }
+      cur.total++; cur.sumRetention += r; cur.count++
       byNs.set(k, cur)
     }
     result.namespaceRanking = Array.from(byNs.entries())
@@ -304,22 +323,24 @@ async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<Dashboar
   }
 
   if (widgets.includes('leech-list')) {
-    result.leechList = states
-      .filter(s => s.state.lapses >= 1)
+    result.leechList = cards
+      .filter(c => c.state.lapses >= 1)
       .sort((a, b) => b.state.lapses - a.state.lapses)
       .slice(0, 10)
-      .map(({ meta, state }) => ({ id: meta.id, question: meta.question, lapses: state.lapses, namespace: meta.namespace }))
+      .map(({ cardId, firstPromptText, state, namespace }) => ({
+        cardId, promptText: firstPromptText, lapses: state.lapses, namespace
+      }))
   }
 
   if (widgets.includes('heatmap')) {
-    result.heatmap = states.map(({ meta, state }) => ({
-      id: meta.id, question: meta.question, retention: retention(state), namespace: meta.namespace
+    result.heatmap = cards.map(({ cardId, firstPromptText, state, namespace }) => ({
+      cardId, promptText: firstPromptText, retention: retention(state), namespace
     }))
   }
 
   if (widgets.includes('activity-streak')) {
     const byDay = new Map<string, number>()
-    for (const { state } of states) for (const h of state.history) {
+    for (const { state } of cards) for (const h of state.history) {
       const k = h.ts.slice(0, 10)
       byDay.set(k, (byDay.get(k) ?? 0) + 1)
     }
@@ -336,11 +357,11 @@ async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<Dashboar
   }
 
   if (widgets.includes('key-stats')) {
-    const total = states.length
-    const retentions = states.map(s => retention(s.state))
+    const total = cards.length
+    const retentions = cards.map(c => retention(c.state))
     const avg = retentions.length ? retentions.reduce((a, b) => a + b, 0) / retentions.length : 0
-    const struggling = states.filter(s => s.state.lapses >= 3 || s.state.state === 'Relearning').length
-    const mastered = states.filter(s => s.state.stability >= 30 && s.state.reps >= 4).length
+    const struggling = cards.filter(c => c.state.lapses >= 3 || c.state.state === 'Relearning').length
+    const mastered = cards.filter(c => c.state.stability >= 30 && c.state.reps >= 4).length
     result.keyStats = { total, retention: avg, struggling, mastered }
   }
 

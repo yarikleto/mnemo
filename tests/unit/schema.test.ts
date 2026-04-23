@@ -5,19 +5,38 @@ describe('CardFrontmatterSchema', () => {
   it('accepts a valid frontmatter', () => {
     const fm = {
       id: '01HXYZ',
-      question: 'What is CAP theorem?',
+      prompts: [{ id: 'p1', text: 'What is CAP theorem?' }],
       tags: ['distributed'],
       created: '2026-04-23T10:00:00.000Z'
     }
     expect(CardFrontmatterSchema.parse(fm)).toEqual(fm)
   })
 
+  it('accepts multiple prompts', () => {
+    const fm = {
+      id: '01HXYZ',
+      prompts: [
+        { id: 'p1', text: 'Q1' },
+        { id: 'p2', text: 'Q2 — different phrasing' }
+      ],
+      tags: [],
+      created: '2026-04-23T10:00:00.000Z'
+    }
+    expect(CardFrontmatterSchema.parse(fm).prompts).toHaveLength(2)
+  })
+
   it('defaults tags to empty array', () => {
-    const fm = { id: '1', question: 'q', created: '2026-04-23T10:00:00.000Z' }
+    const fm = { id: '1', prompts: [{ id: 'p', text: 'q' }], created: '2026-04-23T10:00:00.000Z' }
     expect(CardFrontmatterSchema.parse(fm).tags).toEqual([])
   })
 
-  it('rejects missing question', () => {
+  it('rejects an empty prompts array', () => {
+    expect(() => CardFrontmatterSchema.parse({
+      id: '1', prompts: [], created: '2026-04-23T10:00:00.000Z'
+    })).toThrow()
+  })
+
+  it('rejects missing prompts', () => {
     expect(() => CardFrontmatterSchema.parse({ id: '1', created: '2026-04-23T10:00:00.000Z' })).toThrow()
   })
 })

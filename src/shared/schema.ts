@@ -1,14 +1,16 @@
 import { z } from 'zod'
 import { RATINGS, FSRS_STATES, WIDGET_IDS } from './constants'
 
+const UlidSchema = z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'id must be a ULID')
+
 export const PromptFrontmatterSchema = z.object({
-  id: z.string().min(1),
+  id: UlidSchema,
   text: z.string().min(1)
 })
 export type PromptFrontmatter = z.infer<typeof PromptFrontmatterSchema>
 
 export const CardFrontmatterSchema = z.object({
-  id: z.string().min(1),
+  id: UlidSchema,
   prompts: z.array(PromptFrontmatterSchema).min(1),
   tags: z.array(z.string()).default([]),
   created: z.string().datetime()
@@ -35,7 +37,7 @@ export const ReviewHistoryEntrySchema = z.object({
 })
 
 export const ReviewStateSchema = z.object({
-  id: z.string(),
+  id: UlidSchema,
   due: z.string().datetime(),
   stability: z.number(),
   difficulty: z.number(),

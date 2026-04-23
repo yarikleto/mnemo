@@ -30,25 +30,36 @@ const ok = <T>(data: T): ApiResult<T> => ({ ok: true, data })
 const err = (e: unknown): ApiResult<never> => ({ ok: false, error: e instanceof Error ? e.message : String(e) })
 
 function namespacesFromIndex(index: CardIndex, dueCountsByNs: Map<string, number>): NamespaceNode {
-  const root: NamespaceNode = { name: '', path: '', dueCount: 0, children: [] }
+  const root: NamespaceNode = { name: '', path: '', dueCount: 0, totalCount: 0, children: [] }
+  const totalByNs = new Map<string, number>()
   for (const meta of index.all()) {
+    totalByNs.set(meta.namespace, (totalByNs.get(meta.namespace) ?? 0) + 1)
     const parts = meta.namespace ? meta.namespace.split('/') : []
     let cur = root
     for (let i = 0; i < parts.length; i++) {
       const name = parts[i]!
       const nsPath = parts.slice(0, i + 1).join('/')
       let child = cur.children.find(c => c.name === name)
-      if (!child) { child = { name, path: nsPath, dueCount: 0, children: [] }; cur.children.push(child) }
+      if (!child) {
+        child = { name, path: nsPath, dueCount: 0, totalCount: 0, children: [] }
+        cur.children.push(child)
+      }
       cur = child
     }
   }
-  const fillCounts = (n: NamespaceNode): number => {
-    let total = dueCountsByNs.get(n.path) ?? 0
-    for (const child of n.children) total += fillCounts(child)
-    n.dueCount = total
-    return total
+  const fill = (n: NamespaceNode): { due: number; total: number } => {
+    let due = dueCountsByNs.get(n.path) ?? 0
+    let total = totalByNs.get(n.path) ?? 0
+    for (const child of n.children) {
+      const sub = fill(child)
+      due += sub.due
+      total += sub.total
+    }
+    n.dueCount = due
+    n.totalCount = total
+    return { due, total }
   }
-  fillCounts(root)
+  fill(root)
   return root
 }
 
@@ -142,6 +153,7 @@ export function registerIpc(ctx: Ctx): () => void {
     const current = await readState(cfg.rootPath, input.id)
     const next = rateCard(scheduler, current, input.rating)
     await writeState(cfg.rootPath, next)
+    ctx.win.webContents.send('review-rated', input.id)
     return next
   })
 

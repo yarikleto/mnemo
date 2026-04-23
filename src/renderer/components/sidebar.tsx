@@ -35,7 +35,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-5 pt-7 pb-2">
-        <div className="eyebrow">Namespaces</div>
+        <div className="eyebrow">Decks</div>
       </div>
       <div className="flex-1 overflow-auto px-1.5"><NamespaceTree /></div>
 

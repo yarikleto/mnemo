@@ -5,6 +5,7 @@ export type NamespaceNode = {
   name: string
   path: string
   dueCount: number
+  totalCount: number
   children: NamespaceNode[]
 }
 
@@ -43,6 +44,7 @@ export interface Api {
   onCardChanged(cb: (id: string) => void): () => void
   onCardAdded(cb: (id: string) => void): () => void
   onCardRemoved(cb: (id: string) => void): () => void
+  onReviewRated(cb: (id: string) => void): () => void
   onIndexRebuilt(cb: () => void): () => void
 }
 

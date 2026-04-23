@@ -28,6 +28,7 @@ const api: Api = {
   onCardChanged: (cb) => on('card-changed', cb),
   onCardAdded: (cb) => on('card-added', cb),
   onCardRemoved: (cb) => on('card-removed', cb),
+  onReviewRated: (cb) => on('review-rated', cb),
   onIndexRebuilt: (cb) => on('index-rebuilt', cb)
 }
 

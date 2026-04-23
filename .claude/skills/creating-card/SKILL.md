@@ -23,7 +23,7 @@ Body is any markdown. It's the back of the card — shown after the user rates t
 Don't hand-roll ULIDs or frontmatter. The script handles root discovery, ULID, slug, atomic write, and matches the exact format `src/main/markdown/parse.ts` expects:
 
 ```bash
-./.claude/skills/creating-card/scripts/create-card.mjs \
+./tools/authoring/create-card.mjs \
   --namespace "algorithms/graphs" \
   --prompt "What does BFS guarantee on an unweighted graph?" \
   --tags "algorithms,graphs,bfs" \
@@ -33,7 +33,7 @@ Don't hand-roll ULIDs or frontmatter. The script handles root discovery, ULID, s
 `--prompt` is repeatable. Pass it more than once to attach phrasing variants to the same card:
 
 ```bash
-./.claude/skills/creating-card/scripts/create-card.mjs \
+./tools/authoring/create-card.mjs \
   --namespace "system-design/caching" \
   --prompt "Why is write-through slower than write-back on hot writes?" \
   --prompt "On a hot key, which caching policy issues more backing-store writes, and why?" \

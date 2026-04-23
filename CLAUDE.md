@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Project instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding assistants (Claude Code via `CLAUDE.md`, Codex via the `AGENTS.md` symlink) working with code in this repository.
 
 ## Commands
 
@@ -34,18 +34,20 @@ Do not just push a feature branch. Ship work through a pull request:
 
 The only time it's fine to push without a PR is a trivial fix to a branch that already has an open PR.
 
-After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify the app actually boots rather than relying on typecheck alone. Use the `electron-debug` skill — it launches the built bundle via Playwright, forwards main stdio + renderer console + pageerrors, and intercepts IPC. Triggered with `npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" --duration 4000`. See `.claude/skills/electron-debug/SKILL.md` for flags, scripted UI flows, and failure-dump layout.
+After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify the app actually boots rather than relying on typecheck alone. Use the `electron-debug` skill — it launches the built bundle via Playwright, forwards main stdio + renderer console + pageerrors, and intercepts IPC. Triggered with `npm run build && node ./tools/electron-debug/run.mjs --duration 4000`. See `.claude/skills/electron-debug/SKILL.md` (Claude Code) or `.codex/skills/electron-debug/SKILL.md` (Codex) for flags, scripted UI flows, and failure-dump layout.
 
 Known gotcha the skill catches: `webPreferences.preload` in `src/main/index.ts` must point at the `.mjs` output emitted by `vite-plugin-electron`, not `.js`. Also: do not introduce PRNG-detecting libs (`ulid`, some `uuid`) into the main bundle — they crash on ESM import. A node-`crypto` ULID lives at `src/main/id.ts`; use that.
 
 ### Authoring cards
 
-Two tools, different jobs:
+Two tools, different jobs. Both CLIs have the same capabilities, only the dispatch mechanism differs.
 
-- **`card-researcher` subagent** (`.claude/agents/card-researcher.md`) — use when the user asks you to **research a topic and turn it into cards**. Triggers: "make me cards about X", "learn me Rust ownership", "drill me on the French subjunctive", "research X and quiz me", any batch-of-cards-on-an-unfamiliar-topic request. The agent does its own web research, decomposes the topic into atomic cards, writes 2–3 prompt variants per card (different retrieval angles: mechanism / scenario / consequence), and saves them via the `creating-card` skill. Delegate via the Agent tool with `subagent_type: "card-researcher"`; pass the topic plus any constraints (count, namespace, angle, language) in the prompt.
-- **`creating-card` skill** (`.claude/skills/creating-card/SKILL.md`) — use when the user hands you **the card content already** (a single explanation they wrote, a conversation snippet, a paragraph from a doc) and just wants it committed as a card. No research needed, no batching — just format and write. The skill's helper script (`scripts/create-card.mjs`) is also what the subagent shells out to.
+- **`card-researcher`** — use when the user asks you to **research a topic and turn it into cards**. Triggers: "make me cards about X", "learn me Rust ownership", "drill me on the French subjunctive", "research X and quiz me", any batch-of-cards-on-an-unfamiliar-topic request. Does its own web research, decomposes the topic into atomic cards, writes 2–3 prompt variants per card (different retrieval angles: mechanism / scenario / consequence), and saves them via `creating-card`.
+  - **In Claude Code**: delegate via the Agent tool with `subagent_type: "card-researcher"` (see `.claude/agents/card-researcher.md`); pass the topic plus any constraints (count, namespace, angle, language) in the prompt.
+  - **In Codex**: activate the `card-researcher` skill in-session (see `.codex/skills/card-researcher/SKILL.md`). Codex has no subagent dispatch primitive, so the main session runs the workflow inline. Workflow, quality bar, and output format are identical.
+- **`creating-card`** — use when the user hands you **the card content already** (a single explanation they wrote, a conversation snippet, a paragraph from a doc) and just wants it committed as a card. No research needed, no batching — just format and write. Invoke the `creating-card` skill directly in either CLI (see `.claude/skills/creating-card/SKILL.md` or `.codex/skills/creating-card/SKILL.md`). The helper script at `./tools/authoring/create-card.mjs` is the binary both sides shell out to.
 
-Do NOT use the subagent to turn a single already-written note into one card — that's overkill and burns research tokens. Do NOT hand-roll card YAML yourself when the skill exists.
+Do NOT use `card-researcher` to turn a single already-written note into one card — that's overkill and burns research tokens. Do NOT hand-roll card YAML yourself when `creating-card` exists.
 
 ## Architecture
 

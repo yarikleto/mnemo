@@ -25,10 +25,10 @@ Don't use this for pure logic changes already covered by unit tests — it costs
 One-shot: build, launch, capture everything, exit.
 
 ```bash
-npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" --duration 6000
+npm run build && node ./tools/electron-debug/run.mjs --duration 6000
 ```
 
-When running from a project where this plugin is installed, `${CLAUDE_PLUGIN_ROOT}` resolves to the plugin directory. If running the script directly (local testing), use the actual path.
+The runner is a plain Node script in this repo — no plugin install required.
 
 Output is a flat event log with prefixes you can grep:
 
@@ -63,27 +63,27 @@ If there are no `pageerror` or `main:err` lines and `[done]` appears, the app bo
 Boot check after main-process edit:
 
 ```bash
-npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" --duration 4000
+npm run build && node ./tools/electron-debug/run.mjs --duration 4000
 ```
 
 Verify a specific route renders and capture a screenshot:
 
 ```bash
-npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" \
+npm run build && node ./tools/electron-debug/run.mjs \
   --route '#/dashboard' --duration 6000 --screenshot /tmp/dashboard.png
 ```
 
 Non-standard main entry:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" \
+node ./tools/electron-debug/run.mjs \
   --main build/electron/main.cjs --duration 5000
 ```
 
 Exercise a login flow and screenshot the result:
 
 ```bash
-npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" \
+npm run build && node ./tools/electron-debug/run.mjs \
   --script ./tmp/login-flow.mjs --screenshot /tmp/after-login.png
 ```
 
@@ -124,7 +124,7 @@ Tips:
 Selectors are the #1 source of flaky, guessed-at UI scripts. To avoid guessing, dump the renderer's accessibility tree once and write selectors against what's actually there:
 
 ```bash
-npm run build && node "${CLAUDE_PLUGIN_ROOT}/skills/electron-debug/scripts/run.mjs" \
+npm run build && node ./tools/electron-debug/run.mjs \
   --snapshot /tmp/tree.json --duration 3000
 ```
 

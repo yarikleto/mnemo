@@ -222,14 +222,24 @@ async function main() {
     raws.push(await captureRoute(win, '#/browse', 'browse.png'))
     raws.push(await captureRoute(win, '#/dashboard', 'dashboard.png', { waitMs: 900 }))
 
-    // Editor — open the first card.
+    // Editor + read-mode viewer — open the first card in both.
     const firstId = (await win.evaluate(async () => {
       const r = await window.api.listCards()
       return r.ok ? r.data[0]?.id : null
     }))
     if (firstId) {
+      raws.push(await captureRoute(win, `#/card/${firstId}`, 'card-view.png', { waitMs: 700 }))
       raws.push(await captureRoute(win, `#/editor/${firstId}`, 'editor.png', { waitMs: 700 }))
     }
+
+    // Export dialog — opened from the sidebar while on /browse.
+    raws.push(await captureRoute(win, '#/browse', 'export.png', {
+      after: async (w) => {
+        await w.locator('button:has-text("Export")').first().click()
+        await w.waitForSelector('input[placeholder*="Search" i], [role="dialog"]', { timeout: 3000 })
+        await w.waitForTimeout(400)
+      }
+    }))
 
     await app.close()
     app = null

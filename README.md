@@ -15,9 +15,15 @@
 </p>
 
 <p align="center">
-  <img src="./assets/screenshots/browse.png" alt="Browse all cards" width="420"/>
-  &nbsp;
-  <img src="./assets/screenshots/dashboard.png" alt="Dashboard with due forecast and namespace ranking" width="420"/>
+  <img src="./assets/screenshots/card-view.png" alt="Read-mode card viewer with explicit Edit affordance" width="860"/>
+</p>
+
+<p align="center">
+  <img src="./assets/screenshots/browse.png" alt="Browse all cards" width="860"/>
+</p>
+
+<p align="center">
+  <img src="./assets/screenshots/dashboard.png" alt="Dashboard with due forecast and namespace ranking" width="860"/>
 </p>
 
 <p align="center">
@@ -98,6 +104,10 @@ Cards are portable. To hand some off to another machine or another person:
 
 1. **Export** — open the sidebar → Export, search and multi-select cards (tri-state namespace checkboxes let you grab whole decks at once), pick a destination. You get a single `.mnemo.zip` containing every selected card plus any assets they reference.
 2. **Import** on the other side — Sidebar → Import, pick the archive, preview the card count, choose a target namespace (defaults to `imported`), and decide whether to skip or overwrite cards whose IDs already exist.
+
+<p align="center">
+  <img src="./assets/screenshots/export.png" alt="Export dialog with tri-state namespace checkboxes" width="720"/>
+</p>
 
 Review state (stability, difficulty, due date) is **not** shared — archives carry cards and assets only. Progress stays local to each machine.
 

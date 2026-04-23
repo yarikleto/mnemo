@@ -79,10 +79,42 @@ The sidebar tree, namespace ranking widget, and review filters all derive from t
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | Vitest unit tests |
 | `npm run e2e` | Playwright end-to-end |
-| `npm run dist` | Package for the current OS |
-| `npm run dist:mac` / `:win` / `:linux` | Platform-specific builds |
 
-Packaging artifacts land in `out/`. Targets are configured in `electron-builder.yml`.
+See [Building for release](#building-for-release) for packaging commands.
+
+## Building for release
+
+Packaging is handled by [electron-builder](https://www.electron.build/). Per-platform targets are declared in `electron-builder.yml`.
+
+| Command | Platform | Artifacts |
+|---|---|---|
+| `npm run dist` | Auto-detected (current OS) | — |
+| `npm run dist:mac` | macOS | `.dmg`, `.zip` |
+| `npm run dist:win` | Windows | NSIS installer (`.exe`) |
+| `npm run dist:linux` | Linux | `AppImage`, `.deb` |
+
+Artifacts land in `out/`. The first run downloads the Electron binaries for the target platform and may take a few minutes.
+
+### Cross-building
+
+Each installer format needs its target OS — either natively or emulated:
+
+- **`.dmg`** — build on macOS only. Apple's tooling isn't available elsewhere.
+- **Windows `.exe`** — build on Windows, or on macOS/Linux with [Wine](https://www.winehq.org/) installed.
+- **Linux `AppImage` / `.deb`** — build on any OS.
+
+### Code signing (optional)
+
+Unsigned builds run fine locally, but users will see OS warnings. For distribution:
+
+- **macOS** — export your Developer ID certificate as a `.p12`, then set `CSC_LINK` (path or base64) and `CSC_KEY_PASSWORD` before `npm run dist:mac`. For notarisation, also set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`.
+- **Windows** — set `CSC_LINK` + `CSC_KEY_PASSWORD` with your code-signing certificate.
+
+Full details: [electron-builder signing docs](https://www.electron.build/code-signing).
+
+### App icon
+
+The Mnemo logo lives at `assets/logo.svg`. To produce platform icons (`.icns` for macOS, `.ico` for Windows, `.png` set for Linux), rasterise the SVG to a 1024×1024 PNG and drop it at `build/icon.png` — electron-builder will generate the rest automatically on `npm run dist`.
 
 ## Project structure
 

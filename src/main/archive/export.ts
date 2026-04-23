@@ -6,6 +6,7 @@ import { cardsDir } from '../paths'
 import { ARCHIVE_VERSION, type Manifest } from './manifest'
 import type { CardIndex } from '../store/index'
 import { promptPreview } from '../../shared/prompt'
+import { isSafeAssetName } from './asset-safety'
 
 export async function buildArchiveZip(
   rootPath: string,
@@ -40,6 +41,10 @@ export async function buildArchiveZip(
     cardCount++
 
     for (const asset of referencedAssets(full.body)) {
+      if (!isSafeAssetName(asset)) {
+        warnings.push(`Skipping unsafe asset name: ${asset}`)
+        continue
+      }
       if (includedAssets.has(asset)) continue
       const assetAbs = path.join(path.dirname(meta.path), 'assets', asset)
       try {

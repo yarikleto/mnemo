@@ -13,10 +13,17 @@ function NodeRow({ node, depth }: { node: NamespaceNode; depth: number }) {
   return (
     <div>
       {node.path !== '' && (
-        <label className="flex items-center gap-2 px-2 py-0.5 text-sm hover:bg-border/40 rounded cursor-pointer" style={{ paddingLeft: 8 + depth * 12 }}>
-          <input type="checkbox" checked={checked} onChange={toggle} className="accent-accent" />
-          <span className="flex-1">{node.name}</span>
-          {node.dueCount > 0 && <span className="text-xs text-muted">{node.dueCount}</span>}
+        <label
+          className={`flex items-center gap-2 py-1 pr-2 text-[12.5px] rounded cursor-pointer transition-colors ${
+            checked ? 'text-fg' : 'text-muted hover:text-fg'
+          }`}
+          style={{ paddingLeft: 12 + depth * 14 }}
+        >
+          <input type="checkbox" checked={checked} onChange={toggle} className="w-3 h-3" />
+          <span className="flex-1 truncate">{node.name}</span>
+          {node.dueCount > 0 && (
+            <span className="text-[10px] font-mono font-medium tabular-nums text-accent/90">{node.dueCount}</span>
+          )}
         </label>
       )}
       {node.children.map(c => <NodeRow key={c.path} node={c} depth={depth + (node.path ? 1 : 0)} />)}
@@ -28,7 +35,12 @@ export function NamespaceTree() {
   const { namespaces } = useAppStore()
   if (!namespaces) return null
   if (namespaces.children.length === 0) {
-    return <div className="text-xs text-muted px-2 py-4">No cards yet. Press ⌘N to create one.</div>
+    return (
+      <div className="px-4 py-3 text-[12px] text-muted leading-relaxed">
+        No cards yet.<br />
+        Press <span className="kbd">⌘N</span> to create one.
+      </div>
+    )
   }
   return <div><NodeRow node={namespaces} depth={0} /></div>
 }

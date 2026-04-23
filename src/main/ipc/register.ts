@@ -68,7 +68,7 @@ export function registerIpc(ctx: Ctx): () => void {
     return namespacesFromIndex(ctx.index, counts)
   })
 
-  h('listCards', z.string().optional(), async (ns) => {
+  h('listCards', z.string().nullish(), async (ns) => {
     return ctx.index.all().filter(m => !ns || m.namespace === ns || m.namespace.startsWith(ns + '/'))
   })
 

@@ -18,7 +18,7 @@ export function ThemeToggle() {
   const next = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
   const label = theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System'
   return (
-    <button onClick={() => setTheme(next)} className="text-xs text-muted hover:text-fg px-2 py-1 rounded border border-border">
+    <button onClick={() => setTheme(next)} className="btn-ghost !px-2.5 !py-2 shrink-0 text-[11.5px]" title={`Theme: ${label}`}>
       {label}
     </button>
   )

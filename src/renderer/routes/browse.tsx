@@ -24,29 +24,62 @@ export function BrowseRoute() {
   }, [rows, query, selectedNamespaces])
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="h-full flex flex-col">
+      <div className="px-8 pt-8 pb-5 border-b border-border bg-sidebar/50">
+        <div className="eyebrow mb-1.5">Browse</div>
+        <div className="flex items-end justify-between gap-4">
+          <h1 className="font-editorial text-[26px] font-semibold leading-none">All cards</h1>
+          <div className="text-[12px] text-muted tabular-nums">
+            <span className="font-semibold text-fg">{filtered.length}</span>
+            <span className="mx-1">of</span>
+            <span>{rows.length}</span>
+          </div>
+        </div>
         <input
           value={query} onChange={e => setQuery(e.target.value)}
           placeholder="Search questions or tags…"
-          className="flex-1 bg-transparent border border-border rounded px-3 py-2 text-sm"
+          className="input w-full mt-5"
         />
-        <span className="text-xs text-muted">{filtered.length} of {rows.length}</span>
       </div>
-      <table className="w-full text-sm">
-        <thead className="text-left text-muted border-b border-border">
-          <tr><th className="py-2 pr-4">Question</th><th className="pr-4">Namespace</th><th className="pr-4">Tags</th></tr>
-        </thead>
-        <tbody>
-          {filtered.map(r => (
-            <tr key={r.id} onClick={() => navigate(`/editor/${r.id}`)} className="cursor-pointer hover:bg-border/30 border-b border-border/60">
-              <td className="py-2 pr-4 font-serif">{r.question}</td>
-              <td className="pr-4 text-muted">{r.namespace || '—'}</td>
-              <td className="pr-4 text-muted">{r.tags.join(', ')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      <div className="flex-1 overflow-auto px-8 py-6">
+        {filtered.length === 0 ? (
+          <div className="text-center py-16 text-muted italic font-editorial">
+            {rows.length === 0 ? 'No cards yet.' : 'No matches.'}
+          </div>
+        ) : (
+          <div className="card-surface overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="eyebrow !text-left px-4 py-2.5">Question</th>
+                  <th className="eyebrow !text-left px-4 py-2.5 w-56">Namespace</th>
+                  <th className="eyebrow !text-left px-4 py-2.5 w-48">Tags</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r, i) => (
+                  <tr
+                    key={r.id}
+                    onClick={() => navigate(`/editor/${r.id}`)}
+                    className={`cursor-pointer transition-colors hover:bg-accent/5 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
+                  >
+                    <td className="px-4 py-3 font-editorial text-[14.5px] text-fg">{r.question}</td>
+                    <td className="px-4 py-3 font-mono text-[11.5px] text-muted">{r.namespace || '—'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {r.tags.length === 0 ? <span className="text-muted">—</span> : r.tags.map(t => (
+                          <span key={t} className="text-[11px] px-1.5 py-0.5 bg-border/50 rounded text-muted">{t}</span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

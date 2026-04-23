@@ -9,7 +9,7 @@ import { createScheduler, rateCard } from '../fsrs/scheduler'
 import { buildDueQueue } from '../fsrs/queue'
 import { openInExternalEditor } from '../editor-open'
 import { exportCardsWithDialog, pickImportFileWithDialog } from '../archive/dialog'
-import { importArchive } from '../archive/import'
+import { importArchive, validateNamespace } from '../archive/import'
 import { patchConfig } from '../store/config'
 import { configPath, cardsDir } from '../paths'
 import { ulid } from '../id'
@@ -106,7 +106,8 @@ export function registerIpc(ctx: Ctx): () => void {
     tags: z.array(z.string()).optional()
   }), async (input) => {
     const rootPath = ctx.getConfig().rootPath
-    const full = await createCardOnDisk(rootPath, input)
+    const namespace = validateNamespace(input.namespace)
+    const full = await createCardOnDisk(rootPath, { ...input, namespace })
     ctx.watcher.suppressNext(full.path, full.mtime, full.bodyHash)
     const { body: _b, ...meta } = full; void _b
     ctx.index.upsert(meta)
@@ -145,7 +146,8 @@ export function registerIpc(ctx: Ctx): () => void {
     const rootPath = ctx.getConfig().rootPath
     const meta = ctx.index.get(input.id)
     if (!meta) throw new Error(`Card not found: ${input.id}`)
-    const newPath = await moveCardOnDisk(rootPath, meta.path, input.namespace)
+    const namespace = validateNamespace(input.namespace)
+    const newPath = await moveCardOnDisk(rootPath, meta.path, namespace)
     const full = await readCardAtPath(rootPath, newPath)
     ctx.watcher.suppressNext(full.path, full.mtime, full.bodyHash)
     const { body: _b, ...nextMeta } = full; void _b
@@ -163,14 +165,15 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('deleteNamespace', z.string(), async (ns) => {
     if (!ns) throw new Error('Namespace is required')
+    const validatedNs = validateNamespace(ns)
     const rootPath = ctx.getConfig().rootPath
-    const toDelete = ctx.index.all().filter(m => m.namespace === ns || m.namespace.startsWith(ns + '/'))
+    const toDelete = ctx.index.all().filter(m => m.namespace === validatedNs || m.namespace.startsWith(validatedNs + '/'))
     for (const meta of toDelete) {
       await deleteState(rootPath, meta.id)
       ctx.index.removeById(meta.id)
       ctx.win.webContents.send('card-removed', meta.id)
     }
-    const nsDir = path.join(cardsDir(rootPath), ns)
+    const nsDir = path.join(cardsDir(rootPath), validatedNs)
     await fs.rm(nsDir, { recursive: true, force: true })
     return { deleted: toDelete.length }
   })

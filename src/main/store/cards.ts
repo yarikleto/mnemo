@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { ulid } from 'ulid'
+import { ulid } from '../id'
 import { parseCardFile, serializeCardFile } from '../markdown/parse'
 import { atomicWrite, hashBody } from '../atomic-write'
 import { cardsDir, namespaceFromPath } from '../paths'

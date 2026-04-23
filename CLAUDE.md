@@ -29,12 +29,6 @@ After changing anything in `src/main`, `src/preload`, or `src/renderer`, verify 
 
 Known gotcha the skill catches: `webPreferences.preload` in `src/main/index.ts` must point at the `.mjs` output emitted by `vite-plugin-electron`, not `.js`. Also: do not introduce PRNG-detecting libs (`ulid`, some `uuid`) into the main bundle — they crash on ESM import. A node-`crypto` ULID lives at `src/main/id.ts`; use that.
 
-### CI
-
-One workflow: `.github/workflows/build-macos.yml`. Runs on push to `main`, PRs targeting `main`, tags matching `v*`, and manual dispatch. Steps: `npm ci` → `npm run typecheck` → `npm run test` → `npm run dist:mac` (unsigned; `CSC_IDENTITY_AUTO_DISCOVERY=false`) → upload `out/*.dmg` + `out/*.zip` as a workflow artifact. On `v*` tags, the same artifacts are attached to a GitHub Release.
-
-Implications: breaking typecheck or vitest on `main`/PRs fails CI. Releases are cut by pushing a version tag, not via a separate script. To add Windows/Linux CI, copy the file, swap `macos-latest` → `windows-latest`/`ubuntu-latest` and `npm run dist:mac` → `:win`/`:linux`.
-
 ## Architecture
 
 Electron app with three processes and a strict boundary between them.

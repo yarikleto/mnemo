@@ -1,0 +1,19 @@
+appId: com.interview-prep.app
+productName: Interview Prep
+directories:
+  output: out
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+mac:
+  category: public.app-category.education
+  target:
+    - dmg
+    - zip
+win:
+  target: nsis
+linux:
+  target:
+    - AppImage
+    - deb

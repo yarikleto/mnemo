@@ -29,14 +29,18 @@ const CSP = [
 ].join('; ')
 
 async function createWindow() {
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [CSP],
-      },
+  // Skip CSP in dev: Vite injects an inline preamble for @vitejs/plugin-react,
+  // which `script-src 'self'` blocks, and the renderer fails to mount.
+  if (!process.env.VITE_DEV_SERVER_URL) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [CSP],
+        },
+      })
     })
-  })
+  }
 
   const win = new BrowserWindow({
     width: 1280,

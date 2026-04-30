@@ -191,7 +191,7 @@ body {
 }
 .cm-editor.cm-focused { outline: none; }
 .cm-scroller { padding: 1rem 0; }
-.cm-content { caret-color: rgb(var(--accent)); padding-right: 1rem; }
+.cm-content { caret-color: rgb(var(--fg)) !important; padding-right: 1rem; }
 .cm-gutters {
   background: transparent !important;
   border-right: 1px solid rgb(var(--border)) !important;

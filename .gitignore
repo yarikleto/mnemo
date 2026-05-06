@@ -12,6 +12,8 @@ vite.config.d.ts
 *.tsbuildinfo
 .claude/settings.json
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
 out/
 .vite/
 coverage/

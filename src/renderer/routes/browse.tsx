@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CardMeta } from '../../shared/schema'
 import { unwrap } from '../lib/api'
@@ -14,6 +14,7 @@ export function BrowseRoute() {
   const { selectedNamespaces, refreshNamespaces } = useAppStore()
   const [rows, setRows] = useState<CardMeta[]>([])
   const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
 
   const refresh = () => { unwrap(window.api.listCards()).then(setRows) }
 
@@ -23,6 +24,26 @@ export function BrowseRoute() {
     const offChanged = window.api.onCardChanged(refresh)
     const offRemoved = window.api.onCardRemoved(refresh)
     return () => { offAdded(); offChanged(); offRemoved() }
+  }, [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        const el = searchRef.current
+        if (el) { el.focus(); el.select() }
+        return
+      }
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const t = e.target as HTMLElement | null
+        const tag = t?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   const handleDelete = async (e: React.MouseEvent, r: CardMeta) => {
@@ -57,8 +78,11 @@ export function BrowseRoute() {
           </div>
         </div>
         <input
+          ref={searchRef}
           value={query} onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') (e.currentTarget as HTMLInputElement).blur() }}
           placeholder="Search prompts or tags…"
+          aria-label="Search prompts or tags"
           className="input w-full mt-5"
         />
       </div>

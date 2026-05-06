@@ -21,7 +21,7 @@ export function Sidebar() {
         <div className="eyebrow mt-1.5">Spaced repetition</div>
       </div>
 
-      <nav className="px-2 flex flex-col gap-0.5">
+      <nav aria-label="Primary" className="px-2 flex flex-col gap-0.5">
         {links.map(l => (
           <NavLink
             key={l.to}

@@ -166,11 +166,18 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="eyebrow">{mode === 'new' ? 'New card' : 'Edit card'}</div>
             <div className="flex items-center gap-2">
-              {status && (
-                isError
-                  ? <span className="chip-error">{status}</span>
-                  : <span className="text-[11.5px] text-muted italic">{status}</span>
-              )}
+              <div
+                role={isError ? 'alert' : 'status'}
+                aria-live={isError ? 'assertive' : 'polite'}
+                aria-atomic="true"
+                className="contents"
+              >
+                {status && (
+                  isError
+                    ? <span className="chip-error">{status}</span>
+                    : <span className="text-[11.5px] text-muted italic">{status}</span>
+                )}
+              </div>
               <button onClick={() => setPreviewOpen(true)} className="btn !py-1.5 !px-3 !text-[12px]">Preview</button>
               <button onClick={openExternal} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px]">Open externally</button>
               <button onClick={remove} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px] !text-danger hover:!border-danger/60">Delete</button>

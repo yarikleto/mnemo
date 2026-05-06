@@ -125,7 +125,7 @@ export function ExportDialog({ onClose }: Props) {
         </div>
 
         <div className="flex-1 overflow-auto px-3 py-2">
-          {loadError && <div className="px-3 py-4 text-[13px] text-danger">Failed to load cards: {loadError}</div>}
+          {loadError && <div role="alert" aria-live="assertive" className="px-3 py-4 text-[13px] text-danger">Failed to load cards: {loadError}</div>}
           {!loadError && !cards && <div className="px-3 py-4 text-[13px] text-muted">Loading…</div>}
           {cards && groups.length === 0 && (
             <div className="px-3 py-4 text-[13px] text-muted">No matching cards.</div>
@@ -178,7 +178,12 @@ export function ExportDialog({ onClose }: Props) {
         </div>
 
         <div className="px-6 py-3 border-t border-border flex items-center gap-3">
-          <div className="text-[12px] text-muted flex-1">
+          <div
+            role={err ? 'alert' : 'status'}
+            aria-live={err ? 'assertive' : 'polite'}
+            aria-atomic="true"
+            className="text-[12px] text-muted flex-1"
+          >
             {result
               ? <span className="text-fg">Exported to <span className="font-mono">{result}</span></span>
               : err

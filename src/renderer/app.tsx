@@ -43,6 +43,10 @@ function GlobalShortcuts() {
       const k = e.key.toLowerCase()
       if (k === 'n') { e.preventDefault(); navigate('/editor/new') }
       else if (k === ',') { e.preventDefault(); navigate('/settings') }
+      else if (k === '1') { e.preventDefault(); navigate('/review') }
+      else if (k === '2') { e.preventDefault(); navigate('/browse') }
+      else if (k === '3') { e.preventDefault(); navigate('/dashboard') }
+      else if (k === '4') { e.preventDefault(); navigate('/settings') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

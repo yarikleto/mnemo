@@ -62,7 +62,7 @@ export function CardViewRoute() {
   const breadcrumb = useMemo(() => card?.namespace.split('/').join(' › ') ?? '', [card])
 
   if (error) {
-    return <div className="p-10 text-danger font-editorial italic">Card not found: {error}</div>
+    return <div role="alert" aria-live="assertive" className="p-10 text-danger font-editorial italic">Card not found: {error}</div>
   }
   if (!card) {
     return <div className="p-10 text-muted italic font-editorial">Loading…</div>

@@ -114,7 +114,7 @@ export function ImportDialog({ onClose }: Props) {
           )}
 
           {stage.kind === 'done' && (
-            <div className="flex flex-col gap-2 text-[13px]">
+            <div role="status" aria-live="polite" aria-atomic="true" className="flex flex-col gap-2 text-[13px]">
               <div className="text-fg">
                 Imported {stage.summary.imported} · skipped {stage.summary.skipped} · overwrote {stage.summary.overwritten}
               </div>
@@ -129,7 +129,7 @@ export function ImportDialog({ onClose }: Props) {
             </div>
           )}
 
-          {err && <div className="text-[12px] text-danger">{err}</div>}
+          {err && <div role="alert" aria-live="assertive" className="text-[12px] text-danger">{err}</div>}
         </div>
 
         <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-2">

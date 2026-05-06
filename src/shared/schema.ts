@@ -67,7 +67,12 @@ export const ConfigSchema = z.object({
     desiredRetention: z.number().min(0.5).max(0.99).default(0.9),
     maximumInterval: z.number().int().positive().default(365)
   }),
-  externalEditor: z.string().nullable().default(null)
+  externalEditor: z.string().nullable().default(null),
+  onboardedAt: z.string().nullable().default(null),
+  lastRoute: z.string().nullable().default(null),
+  autoUpdate: z.object({
+    enabled: z.boolean().default(true)
+  }).default({ enabled: true })
 })
 export type Config = z.infer<typeof ConfigSchema>
 
@@ -84,5 +89,8 @@ export const DEFAULT_CONFIG: Omit<Config, 'rootPath'> = {
     ]
   },
   fsrs: { desiredRetention: 0.9, maximumInterval: 365 },
-  externalEditor: null
+  externalEditor: null,
+  onboardedAt: null,
+  lastRoute: null,
+  autoUpdate: { enabled: true }
 }

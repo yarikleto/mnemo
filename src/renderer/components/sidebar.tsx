@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { NamespaceTree } from './namespace-tree'
 import { ThemeToggle } from './theme-toggle'
@@ -8,6 +8,18 @@ import { ImportDialog } from './import-dialog'
 export function Sidebar() {
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  // Menu items in main process dispatch CustomEvents to open these dialogs
+  // without coupling the menu router to sidebar state.
+  useEffect(() => {
+    const onImport = () => setImportOpen(true)
+    const onExport = () => setExportOpen(true)
+    window.addEventListener('mnemo:open-import', onImport)
+    window.addEventListener('mnemo:open-export', onExport)
+    return () => {
+      window.removeEventListener('mnemo:open-import', onImport)
+      window.removeEventListener('mnemo:open-export', onExport)
+    }
+  }, [])
   const links = [
     { to: '/review',    label: 'Review' },
     { to: '/browse',    label: 'Browse' },

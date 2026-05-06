@@ -8,6 +8,7 @@ import type { CardFull, CardMeta, PromptFrontmatter } from '../../shared/schema'
 import { promptPreview } from '../../shared/prompt'
 
 export async function walkCardFiles(rootPath: string): Promise<string[]> {
+  if (!rootPath) return []
   const root = cardsDir(rootPath)
   await fs.mkdir(root, { recursive: true })
   const out: string[] = []

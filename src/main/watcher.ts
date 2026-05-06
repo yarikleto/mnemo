@@ -17,6 +17,7 @@ export class Watcher extends EventEmitter {
   constructor(private rootPath: string, private index: CardIndex) { super() }
 
   start() {
+    if (!this.rootPath) return
     this.watcher = chokidar.watch(cardsDir(this.rootPath), {
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 50 }
@@ -30,7 +31,17 @@ export class Watcher extends EventEmitter {
     this.suppressed.set(path, { mtime, hash })
   }
 
-  async stop() { await this.watcher?.close() }
+  async stop() {
+    await this.watcher?.close()
+    this.watcher = undefined
+  }
+
+  async relocate(newRoot: string) {
+    await this.stop()
+    this.rootPath = newRoot
+    this.suppressed.clear()
+    this.start()
+  }
 
   private async handleChange(absPath: string, kind: 'add' | 'change') {
     if (!absPath.endsWith('.md')) return

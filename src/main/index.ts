@@ -5,6 +5,7 @@ import { loadConfig } from './store/config'
 import { CardIndex } from './store/index'
 import { Watcher } from './watcher'
 import { registerIpc } from './ipc/register'
+import { installAppMenu } from './menu'
 import { configPath, defaultRootPath } from './paths'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -45,7 +46,7 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    fullscreen: true,
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -56,9 +57,12 @@ async function createWindow() {
 
   let config = await loadConfig(configPath(), defaultRootPath())
   const index = new CardIndex()
-  await index.buildFrom(config.rootPath)
+  // When a fresh install hasn't picked a vault yet, rootPath is the empty
+  // sentinel — skip building the index and starting chokidar; the watcher
+  // and index get bootstrapped by completeOnboarding once a folder is chosen.
+  if (config.rootPath) await index.buildFrom(config.rootPath)
   const watcher = new Watcher(config.rootPath, index)
-  watcher.start()
+  if (config.rootPath) watcher.start()
 
   protocol.handle('mnemo-asset', (req) => {
     const url = new URL(req.url)
@@ -79,6 +83,8 @@ async function createWindow() {
     watcher,
     win
   })
+
+  installAppMenu(win)
 
   if (process.env.VITE_DEV_SERVER_URL) {
     await win.loadURL(process.env.VITE_DEV_SERVER_URL)

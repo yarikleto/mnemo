@@ -1,7 +1,8 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, app, dialog } from 'electron'
 import { z } from 'zod'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import crypto from 'node:crypto'
 import { readCardAtPath, createCardOnDisk, updateCardOnDisk, moveCardOnDisk, deleteCardOnDisk } from '../store/cards'
 import { readState, writeState, deleteState, listStateIds } from '../store/state'
@@ -11,7 +12,7 @@ import { openInExternalEditor } from '../editor-open'
 import { exportCardsWithDialog, pickImportFileWithDialog } from '../archive/dialog'
 import { importArchive, validateNamespace } from '../archive/import'
 import { patchConfig } from '../store/config'
-import { configPath, cardsDir } from '../paths'
+import { configPath, cardsDir, defaultRootPath } from '../paths'
 import { ulid } from '../id'
 import type { Config, PromptFrontmatter } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
@@ -259,6 +260,60 @@ export function registerIpc(ctx: Ctx): () => void {
     )
   })
 
+  h('pickVaultFolder', VOID, async () => {
+    const result = await dialog.showOpenDialog(ctx.win, {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Pick a vault folder'
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return { path: result.filePaths[0]! }
+  })
+
+  h('getDefaultVaultPath', VOID, async () => ({ path: defaultRootPath() }))
+
+  h('completeOnboarding', z.object({
+    rootPath: z.string().min(1)
+  }), async (input) => {
+    if (!path.isAbsolute(input.rootPath)) {
+      throw new Error('Vault path must be absolute')
+    }
+    // Probe writability with a temp file before committing the choice.
+    await fs.mkdir(input.rootPath, { recursive: true })
+    const probe = path.join(input.rootPath, `.mnemo-write-probe-${Date.now()}`)
+    try {
+      await fs.writeFile(probe, '')
+    } catch (e) {
+      throw new Error(`Vault folder is not writable: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      await fs.rm(probe, { force: true })
+    }
+    await fs.mkdir(path.join(input.rootPath, 'cards'), { recursive: true })
+    await fs.mkdir(path.join(input.rootPath, 'state'), { recursive: true })
+
+    const next = await patchConfig(configPath(), ctx.getConfig(), {
+      rootPath: input.rootPath,
+      onboardedAt: new Date().toISOString()
+    })
+    ctx.setConfig(next)
+    await ctx.index.buildFrom(next.rootPath)
+    await ctx.watcher.relocate(next.rootPath)
+    ctx.win.webContents.send('index-rebuilt')
+    return next
+  })
+
+  h('copyDiagnostics', VOID, async () => {
+    const lines = [
+      `Mnemo ${app.getVersion()}`,
+      `Platform: ${process.platform} ${os.release()} (${process.arch})`,
+      `Electron: ${process.versions.electron}`,
+      `Chromium: ${process.versions.chrome}`,
+      `Node: ${process.versions.node}`,
+      `Vault: ${ctx.getConfig().rootPath || '(not picked yet)'}`,
+      `Onboarded: ${ctx.getConfig().onboardedAt ?? 'no'}`
+    ]
+    return { text: lines.join('\n') }
+  })
+
   const onAdded = (id: string) => ctx.win.webContents.send('card-added', id)
   const onChanged = (id: string) => ctx.win.webContents.send('card-changed', id)
   const onRemoved = (id: string) => ctx.win.webContents.send('card-removed', id)
@@ -279,7 +334,8 @@ export function registerIpc(ctx: Ctx): () => void {
       'listNamespaces','listCards','getDueQueue','readCard','createCard','updateCard',
       'moveCard','deleteCard','deleteNamespace','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
       'searchCards','rescan','getDashboardData',
-      'exportCards','pickImportFile','importArchive'
+      'exportCards','pickImportFile','importArchive',
+      'pickVaultFolder','completeOnboarding','getDefaultVaultPath','copyDiagnostics'
     ]) ipcMain.removeHandler(ch)
   }
 }

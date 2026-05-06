@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Api } from '../shared/api'
+import type { Api, MenuVerb } from '../shared/api'
+import { MENU_VERBS } from '../shared/api'
 
 const invoke = <T>(ch: string, args?: unknown): Promise<T> => ipcRenderer.invoke(ch, args ?? null) as Promise<T>
 const on = (ch: string, cb: (...a: any[]) => void) => {
@@ -29,11 +30,19 @@ const api: Api = {
   exportCards: (input) => invoke('exportCards', input),
   pickImportFile: () => invoke('pickImportFile'),
   importArchive: (input) => invoke('importArchive', input),
+  pickVaultFolder: () => invoke('pickVaultFolder'),
+  completeOnboarding: (input) => invoke('completeOnboarding', input),
+  getDefaultVaultPath: () => invoke('getDefaultVaultPath'),
+  copyDiagnostics: () => invoke('copyDiagnostics'),
   onCardChanged: (cb) => on('card-changed', cb),
   onCardAdded: (cb) => on('card-added', cb),
   onCardRemoved: (cb) => on('card-removed', cb),
   onReviewRated: (cb) => on('review-rated', cb),
-  onIndexRebuilt: (cb) => on('index-rebuilt', cb)
+  onIndexRebuilt: (cb) => on('index-rebuilt', cb),
+  onMenuCommand: (cb) => {
+    const offs = MENU_VERBS.map(verb => on(`menu:${verb}`, () => cb(verb as MenuVerb)))
+    return () => offs.forEach(off => off())
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

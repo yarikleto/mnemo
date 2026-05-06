@@ -11,6 +11,6 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    exclude: ['node_modules/**', 'dist/**', 'dist-electron/**', 'tests/e2e/**']
+    exclude: ['node_modules/**', 'dist/**', 'dist-electron/**', 'tests/e2e/**', '.claude/worktrees/**']
   }
 })

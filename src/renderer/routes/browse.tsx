@@ -42,8 +42,16 @@ export function BrowseRoute() {
         searchRef.current?.focus()
       }
     }
+    const onFocusSearch = () => {
+      const el = searchRef.current
+      if (el) { el.focus(); el.select() }
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('mnemo:focus-search', onFocusSearch)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mnemo:focus-search', onFocusSearch)
+    }
   }, [])
 
   const handleDelete = async (e: React.MouseEvent, r: CardMeta) => {

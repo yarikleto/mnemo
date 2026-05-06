@@ -71,12 +71,30 @@ export interface Api {
     overwrite: boolean
   }): Promise<ApiResult<ImportSummary>>
 
+  pickVaultFolder(): Promise<ApiResult<{ path: string } | null>>
+  completeOnboarding(input: { rootPath: string }): Promise<ApiResult<Config>>
+  getDefaultVaultPath(): Promise<ApiResult<{ path: string }>>
+  copyDiagnostics(): Promise<ApiResult<{ text: string }>>
+
   onCardChanged(cb: (id: string) => void): () => void
   onCardAdded(cb: (id: string) => void): () => void
   onCardRemoved(cb: (id: string) => void): () => void
   onReviewRated(cb: (cardId: string) => void): () => void
   onIndexRebuilt(cb: () => void): () => void
+  onMenuCommand(cb: (verb: MenuVerb) => void): () => void
 }
+
+export const MENU_VERBS = [
+  'open-settings',
+  'new-card',
+  'nav-review', 'nav-browse', 'nav-dashboard',
+  'toggle-theme',
+  'find',
+  'import', 'export',
+  'open-vault-folder',
+  'copy-diagnostics'
+] as const
+export type MenuVerb = typeof MENU_VERBS[number]
 
 declare global {
   interface Window {

@@ -15,7 +15,8 @@ export function LeechListWidget({ data }: { data: NonNullable<DashboardData['lee
             <div
               key={c.cardId}
               onClick={() => navigate(`/card/${c.cardId}`)}
-              className={`flex justify-between items-center py-2 px-1 text-[13px] cursor-pointer transition-colors hover:text-accent ${i === data.length - 1 ? '' : 'border-b border-border/50'}`}
+              className={`flex justify-between items-center py-2 px-1 text-[13px] cursor-pointer transition-colors hover:text-accent hover:translate-x-0.5 animate-fade-in-up ${i === data.length - 1 ? '' : 'border-b border-border/50'}`}
+              style={{ animationDelay: `${i * 40}ms` }}
             >
               <span className="font-editorial truncate pr-3">{promptPreview(c.promptText, 120)}</span>
               <span className="shrink-0 text-[11px] font-mono tabular-nums text-danger/80">{c.lapses}×</span>

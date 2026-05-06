@@ -71,14 +71,14 @@ export function KeymapModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8"
+      className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8 animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="keymap-modal-title"
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[640px] max-h-[88vh] flex flex-col"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[640px] max-h-[88vh] flex flex-col animate-pop-in"
         onClick={e => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -87,8 +87,12 @@ export function KeymapModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-auto px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-          {SECTIONS.map(s => (
-            <div key={s.title}>
+          {SECTIONS.map((s, si) => (
+            <div
+              key={s.title}
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${60 + si * 35}ms` }}
+            >
               <div className="eyebrow mb-2">{s.title}</div>
               <ul className="flex flex-col gap-1.5">
                 {s.bindings.map((b, i) => (

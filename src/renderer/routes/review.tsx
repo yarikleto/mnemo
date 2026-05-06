@@ -77,8 +77,8 @@ export function ReviewRoute() {
   if (!current) {
     return (
       <div className="h-full flex items-center justify-center px-6">
-        <div className="text-center max-w-md">
-          <div className="text-5xl mb-6 opacity-40">✓</div>
+        <div className="text-center max-w-md animate-fade-in-up">
+          <div className="text-5xl mb-6 opacity-40 animate-pop-soft">✓</div>
           <h2 className="font-editorial text-2xl font-semibold mb-2">Nothing due right now.</h2>
           <p className="text-muted text-[14px] leading-relaxed">
             {sessionCounts.reviewed > 0
@@ -102,7 +102,7 @@ export function ReviewRoute() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-[640px] mx-auto px-8 pt-16 pb-24">
+        <div key={current.card.id} className="max-w-[640px] mx-auto px-8 pt-16 pb-24 animate-fade-in-up">
           <div className="eyebrow mb-5 flex items-center gap-3">
             <span>{breadcrumb || 'root'}</span>
             {variantLabel && (<><span className="text-border">·</span><span className="text-muted normal-case">{variantLabel}</span></>)}
@@ -117,7 +117,7 @@ export function ReviewRoute() {
           </div>
 
           {revealed ? (
-            <>
+            <div className="animate-fade-in-up">
               <div className="h-px bg-border mb-8" />
               <MarkdownView content={current.card.body} basePath={current.card.path} />
               <div className="mt-14 pt-8 border-t border-border">
@@ -127,7 +127,8 @@ export function ReviewRoute() {
                     <button
                       key={r}
                       onClick={() => rate(r)}
-                      className={`btn flex-1 min-w-[120px] ${RATING_STYLE[r]}`}
+                      className={`btn flex-1 min-w-[120px] animate-fade-in-up ${RATING_STYLE[r]}`}
+                      style={{ animationDelay: `${80 + i * 55}ms` }}
                     >
                       <span className="kbd">{i + 1}</span>
                       <span>{r}</span>
@@ -135,7 +136,7 @@ export function ReviewRoute() {
                   ))}
                 </div>
               </div>
-            </>
+            </div>
           ) : (
             <button onClick={() => setRevealed(true)} className="btn-primary">
               Reveal answer <span className="kbd !bg-white/20 !border-white/25 !text-white !shadow-none">Space</span>

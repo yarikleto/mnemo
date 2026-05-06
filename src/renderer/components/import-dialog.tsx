@@ -61,11 +61,11 @@ export function ImportDialog({ onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8"
+      className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[520px] flex flex-col"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[520px] flex flex-col animate-pop-in"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">

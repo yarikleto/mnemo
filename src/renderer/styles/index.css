@@ -43,6 +43,22 @@ body {
   @apply bg-bg text-fg;
 }
 
+/* Soften theme flip — surfaces & strokes ease, text stays instant for clarity */
+body, aside, main, .card-surface,
+.btn, .btn-primary, .btn-ghost, .input, .kbd, .chip-error {
+  transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+/* Honor OS-level reduced-motion — kills keyframes + transitions globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Editorial serif reserved for card titles & prose headings */
 .font-editorial {
   font-family: Lora, 'Iowan Old Style', 'Charter', Georgia, Cambria, serif;
@@ -64,6 +80,7 @@ body {
            bg-surface text-fg border border-border/80
            transition-all duration-150
            hover:border-accent/40 hover:text-accent hover:-translate-y-[0.5px]
+           active:translate-y-0 active:scale-[0.98]
            focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40
            disabled:opacity-40 disabled:pointer-events-none disabled:hover:translate-y-0;
   }
@@ -73,6 +90,7 @@ body {
            shadow-[0_1px_0_0_rgba(0,0,0,0.06),0_1px_2px_-1px_rgba(0,0,0,0.12)]
            transition-all duration-150
            hover:bg-[rgb(var(--accent))]/90 hover:-translate-y-[0.5px] hover:shadow-[0_2px_4px_-1px_rgba(0,0,0,0.15)]
+           active:translate-y-0 active:scale-[0.98]
            focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg
            disabled:opacity-40 disabled:pointer-events-none disabled:hover:translate-y-0;
   }
@@ -80,6 +98,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 px-3 py-2 text-[13px] font-medium rounded-md
            bg-transparent text-muted transition
            hover:bg-border/50 hover:text-fg
+           active:scale-[0.96]
            focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
   }
   .input {

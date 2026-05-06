@@ -45,7 +45,9 @@ export function ThemeToggle() {
       title={`Theme: ${label} (click to switch)`}
       aria-label={`Theme: ${label}. Click to switch.`}
     >
-      <Icon />
+      <span key={theme} className="inline-flex animate-pop-soft">
+        <Icon />
+      </span>
     </button>
   )
 }

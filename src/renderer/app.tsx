@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Sidebar } from './components/sidebar'
 import { KeymapModal } from './components/keymap-modal'
 import { useAppStore } from './stores/app-store'
@@ -14,27 +14,45 @@ export function App() {
   const { config, init } = useAppStore()
   const [helpOpen, setHelpOpen] = useState(false)
   useEffect(() => { init() }, [init])
-  if (!config) return <div className="h-full flex items-center justify-center text-muted italic font-editorial">Loading…</div>
+  if (!config) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted italic font-editorial animate-fade-in">
+        <span className="animate-pulse-soft">Loading…</span>
+      </div>
+    )
+  }
   return (
     <HashRouter>
       <GlobalShortcuts onOpenHelp={() => setHelpOpen(true)} />
       <div className="flex h-full">
         <Sidebar />
         <main className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/"           element={<Navigate to="/review" />} />
-            <Route path="/review"     element={<ReviewRoute />} />
-            <Route path="/browse"     element={<BrowseRoute />} />
-            <Route path="/editor/new" element={<EditorRoute mode="new" />} />
-            <Route path="/editor/:id" element={<EditorRoute mode="edit" />} />
-            <Route path="/card/:id"   element={<CardViewRoute />} />
-            <Route path="/dashboard"  element={<DashboardRoute />} />
-            <Route path="/settings"   element={<SettingsRoute />} />
-          </Routes>
+          <RoutedView />
         </main>
       </div>
       {helpOpen && <KeymapModal onClose={() => setHelpOpen(false)} />}
     </HashRouter>
+  )
+}
+
+function RoutedView() {
+  const location = useLocation()
+  // Group editor variants under one key so navigating new → /editor/:id (after first save)
+  // doesn't re-mount the editor mid-typing. Card-view → editor still re-fades.
+  const animKey = location.pathname.startsWith('/editor/') ? '/editor' : location.pathname
+  return (
+    <div key={animKey} className="h-full animate-fade-in-up">
+      <Routes location={location}>
+        <Route path="/"           element={<Navigate to="/review" />} />
+        <Route path="/review"     element={<ReviewRoute />} />
+        <Route path="/browse"     element={<BrowseRoute />} />
+        <Route path="/editor/new" element={<EditorRoute mode="new" />} />
+        <Route path="/editor/:id" element={<EditorRoute mode="edit" />} />
+        <Route path="/card/:id"   element={<CardViewRoute />} />
+        <Route path="/dashboard"  element={<DashboardRoute />} />
+        <Route path="/settings"   element={<SettingsRoute />} />
+      </Routes>
+    </div>
   )
 }
 

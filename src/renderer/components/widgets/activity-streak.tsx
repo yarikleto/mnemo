@@ -17,10 +17,13 @@ export function ActivityStreakWidget({ data }: { data: NonNullable<DashboardData
         </div>
       </div>
       <div className="grid grid-flow-col grid-rows-7 gap-[3px] mb-4">
-        {data.days.map(d => (
+        {data.days.map((d, i) => (
           <div key={d.date} title={`${d.date}: ${d.count}`}
-               className="w-3 h-3 rounded-[2px]"
-               style={{ background: d.count === 0 ? 'rgb(var(--border) / 0.7)' : `rgb(var(--accent) / ${0.2 + (d.count / max) * 0.8})` }} />
+               className="w-3 h-3 rounded-[2px] animate-pop-soft"
+               style={{
+                 background: d.count === 0 ? 'rgb(var(--border) / 0.7)' : `rgb(var(--accent) / ${0.2 + (d.count / max) * 0.8})`,
+                 animationDelay: `${Math.min(i * 4, 360)}ms`
+               }} />
         ))}
       </div>
       <div className="flex justify-between items-baseline">

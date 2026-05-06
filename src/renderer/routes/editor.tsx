@@ -25,7 +25,30 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
   const [cardPath, setCardPath] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  const [conflict, setConflict] = useState(false)
   const saveTimer = useRef<number | null>(null)
+  const dirtyRef = useRef(false)
+  const loadedIdRef = useRef<string | null>(null)
+  // Track our own writes vs. external ones — set briefly around save() so the
+  // card-changed event we caused doesn't trip the conflict banner.
+  const ownWriteUntil = useRef(0)
+
+  // Keep refs in sync with state for use inside event listeners.
+  useEffect(() => { dirtyRef.current = dirty }, [dirty])
+  useEffect(() => { loadedIdRef.current = loadedId }, [loadedId])
+
+  const reloadFromDisk = async (cardId: string) => {
+    const c = await unwrap(window.api.readCard(cardId))
+    setNamespace(c.namespace)
+    setTags(c.tags.join(', '))
+    setPrompts(c.prompts.map(p => ({ key: draftKey(), id: p.id, text: p.text })))
+    setBody(c.body)
+    setCardPath(c.path)
+    setDirty(false)
+    setConflict(false)
+    if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
+  }
 
   useEffect(() => {
     if (mode === 'edit' && id) {
@@ -37,16 +60,40 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
         setLoadedId(c.id)
         setCardPath(c.path)
         setStatus('')
+        setDirty(false)
+        setConflict(false)
         if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
       })
     }
   }, [mode, id])
+
+  // F-013: external-edit conflict detection.
+  // The main process's watcher.suppressNext should already drop our own writes,
+  // but we add a short ownWriteUntil window as belt-and-braces against races.
+  useEffect(() => {
+    const off = window.api.onCardChanged(changedId => {
+      const target = loadedIdRef.current
+      if (!target || changedId !== target) return
+      if (Date.now() < ownWriteUntil.current) return
+      if (!dirtyRef.current) {
+        // No local edits in flight — silently pull the new content in.
+        reloadFromDisk(target).catch(() => {})
+      } else {
+        // Local edits would be clobbered by a silent reload — surface the conflict.
+        if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
+        setConflict(true)
+      }
+    })
+    return () => off()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const validPrompts = () => prompts.map(p => ({ id: p.id, text: p.text.trim() })).filter(p => p.text.length > 0)
 
   const save = async (explicit = false) => {
     const tagsArr = tags.split(',').map(s => s.trim()).filter(Boolean)
     const cleaned = validPrompts()
+    ownWriteUntil.current = Date.now() + 1500
     if (mode === 'new' || !loadedId) {
       if (mode !== 'new') return
       if (cleaned.length === 0) { if (explicit) setStatus('At least one prompt required'); return }
@@ -57,6 +104,8 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       setCardPath(created.path)
       setPrompts(created.prompts.map(p => ({ key: draftKey(), id: p.id, text: p.text })))
       setStatus('Saved')
+      setDirty(false)
+      setConflict(false)
       await refreshNamespaces()
       if (explicit) navigate('/browse')
       else navigate(`/editor/${created.id}`, { replace: true })
@@ -72,11 +121,17 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       await refreshNamespaces()
     }
     setStatus('Saved')
+    setDirty(false)
+    setConflict(false)
     if (explicit) navigate(`/card/${loadedId}`)
   }
 
+  const markDirty = () => { if (!dirtyRef.current) setDirty(true) }
+
   const scheduleAutosave = () => {
+    markDirty()
     if (!loadedId) return
+    if (conflict) return
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => { save(false) }, 2000)
   }
@@ -174,8 +229,8 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
               >
                 {status && (
                   isError
-                    ? <span className="chip-error">{status}</span>
-                    : <span className="text-[11.5px] text-muted italic">{status}</span>
+                    ? <span key={status} className="chip-error animate-pop-in">{status}</span>
+                    : <span key={status} className="text-[11.5px] text-muted italic animate-fade-in-down">{status}</span>
                 )}
               </div>
               <button onClick={() => setPreviewOpen(true)} className="btn !py-1.5 !px-3 !text-[12px]">Preview</button>
@@ -210,6 +265,28 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
         </div>
       </div>
 
+      {conflict && loadedId && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="px-7 py-2.5 border-b border-[rgb(var(--accent))]/40 bg-[rgb(var(--accent))]/10 flex items-center gap-3 animate-slide-down"
+        >
+          <span className="text-[16px] leading-none" aria-hidden="true">⚠︎</span>
+          <div className="flex-1 text-[12.5px] text-fg leading-snug">
+            <span className="font-medium">This card was changed outside the app.</span>
+            <span className="text-muted ml-2">Reload the file to pick up the change, or keep your draft and overwrite on save.</span>
+          </div>
+          <button
+            onClick={() => reloadFromDisk(loadedId)}
+            className="btn !py-1 !px-2.5 !text-[11.5px]"
+          >Reload from disk</button>
+          <button
+            onClick={() => { setConflict(false); scheduleAutosave() }}
+            className="btn-ghost !py-1 !px-2.5 !text-[11.5px]"
+          >Keep my changes</button>
+        </div>
+      )}
+
       <SplitPane
         direction="vertical"
         storageKey="editor-prompts-body"
@@ -226,7 +303,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
             <ScrollFade className="flex-1 min-h-0">
               <div className="px-7 pb-4 space-y-3">
                 {prompts.map((p, i) => (
-                  <div key={p.key} className="border border-border rounded-md bg-surface overflow-hidden">
+                  <div key={p.key} className="border border-border rounded-md bg-surface overflow-hidden animate-fade-in-up">
                     <div className="flex items-center justify-between px-2.5 py-1 bg-sidebar/60 border-b border-border">
                       <span className="text-[10.5px] font-mono text-muted uppercase tracking-wider">#{i + 1}</span>
                       <div className="flex items-center gap-1">

@@ -31,11 +31,11 @@ export function CardPreviewModal({ prompts, body, basePath, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8"
+      className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[760px] max-h-[88vh] flex flex-col"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[760px] max-h-[88vh] flex flex-col animate-pop-in"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">
@@ -76,7 +76,7 @@ export function CardPreviewModal({ prompts, body, basePath, onClose }: Props) {
             </div>
           ) : (
             <>
-              <div className="mb-8">
+              <div key={`prompt-${safeIdx}`} className="mb-8 animate-fade-in-up">
                 <MarkdownView
                   content={prompt}
                   basePath={basePath}
@@ -85,12 +85,12 @@ export function CardPreviewModal({ prompts, body, basePath, onClose }: Props) {
               </div>
 
               {revealed ? (
-                <>
+                <div className="animate-fade-in-up">
                   <div className="h-px bg-border mb-8" />
                   {body.trim()
                     ? <MarkdownView content={body} basePath={basePath} />
                     : <div className="text-muted italic text-[14px] font-editorial">No answer body yet.</div>}
-                </>
+                </div>
               ) : (
                 <button onClick={() => setRevealed(true)} className="btn-primary">
                   Reveal answer <span className="kbd !bg-white/20 !border-white/25 !text-white !shadow-none">Space</span>

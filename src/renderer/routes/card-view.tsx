@@ -85,12 +85,16 @@ export function CardViewRoute() {
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-[720px] mx-auto px-8 pt-12 pb-24">
-          <div className="eyebrow mb-5">{breadcrumb || 'root'}</div>
+        <div key={card.id} className="max-w-[720px] mx-auto px-8 pt-12 pb-24">
+          <div className="eyebrow mb-5 animate-fade-in-up">{breadcrumb || 'root'}</div>
 
           <div className="mb-8">
             {card.prompts.map((p, i) => (
-              <div key={p.id} className={i === 0 ? '' : 'mt-6 pt-6 border-t border-border/50'}>
+              <div
+                key={p.id}
+                className={`animate-fade-in-up ${i === 0 ? '' : 'mt-6 pt-6 border-t border-border/50'}`}
+                style={{ animationDelay: `${60 + i * 60}ms` }}
+              >
                 {card.prompts.length > 1 && (
                   <div className="eyebrow mb-3 text-muted">Prompt {i + 1} / {card.prompts.length}</div>
                 )}
@@ -104,7 +108,7 @@ export function CardViewRoute() {
           </div>
 
           {card.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-10">
+            <div className="flex flex-wrap gap-1.5 mb-10 animate-fade-in" style={{ animationDelay: '180ms' }}>
               {card.tags.map(t => (
                 <span key={t} className="text-[11px] px-1.5 py-0.5 bg-border/50 rounded text-muted">{t}</span>
               ))}
@@ -113,11 +117,13 @@ export function CardViewRoute() {
 
           <div className="h-px bg-border mb-8" />
 
-          {card.body.trim() ? (
-            <MarkdownView content={card.body} basePath={card.path} />
-          ) : (
-            <div className="text-muted text-[14px] italic font-editorial">No answer written yet.</div>
-          )}
+          <div className="animate-fade-in-up" style={{ animationDelay: '220ms' }}>
+            {card.body.trim() ? (
+              <MarkdownView content={card.body} basePath={card.path} />
+            ) : (
+              <div className="text-muted text-[14px] italic font-editorial">No answer written yet.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

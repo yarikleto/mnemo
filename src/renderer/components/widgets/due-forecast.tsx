@@ -12,8 +12,8 @@ export function DueForecastWidget({ data }: { data: NonNullable<DashboardData['d
         {data.next7Days.map((c, i) => (
           <div key={i} className="flex-1 flex flex-col justify-end" title={`+${i + 1}d: ${c}`}>
             <div
-              className="bg-accent/80 rounded-t-[2px] transition-all min-h-[2px]"
-              style={{ height: `${(c / max) * 100}%` }}
+              className="bg-accent/80 rounded-t-[2px] transition-[height] duration-700 ease-out min-h-[2px] animate-fade-in"
+              style={{ height: `${(c / max) * 100}%`, animationDelay: `${100 + i * 50}ms` }}
             />
           </div>
         ))}

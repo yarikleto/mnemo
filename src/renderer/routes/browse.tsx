@@ -89,11 +89,11 @@ export function BrowseRoute() {
 
       <div className="flex-1 overflow-auto px-8 py-6">
         {filtered.length === 0 ? (
-          <div className="text-center py-16 text-muted italic font-editorial">
+          <div className="text-center py-16 text-muted italic font-editorial animate-fade-in-up">
             {rows.length === 0 ? 'No cards yet.' : 'No matches.'}
           </div>
         ) : (
-          <div className="card-surface overflow-hidden">
+          <div className="card-surface overflow-hidden animate-fade-in">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-border">

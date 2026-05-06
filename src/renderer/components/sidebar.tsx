@@ -27,10 +27,13 @@ export function Sidebar() {
             key={l.to}
             to={l.to}
             className={({ isActive }) =>
-              `relative block pl-5 pr-3 py-1.5 text-[13px] rounded-r-md transition-colors ${
+              `relative block pl-5 pr-3 py-1.5 text-[13px] rounded-r-md transition-colors
+               before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-accent before:rounded-r
+               before:transition-all before:duration-200 before:origin-top
+               ${
                 isActive
-                  ? 'text-fg font-semibold before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-accent before:rounded-r'
-                  : 'text-muted font-medium hover:text-fg'
+                  ? 'text-fg font-semibold before:opacity-100 before:scale-y-100'
+                  : 'text-muted font-medium hover:text-fg before:opacity-0 before:scale-y-50'
               }`
             }
           >

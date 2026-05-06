@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Sidebar } from './components/sidebar'
+import { KeymapModal } from './components/keymap-modal'
 import { useAppStore } from './stores/app-store'
 import { ReviewRoute } from './routes/review'
 import { BrowseRoute } from './routes/browse'
@@ -11,11 +12,12 @@ import { SettingsRoute } from './routes/settings'
 
 export function App() {
   const { config, init } = useAppStore()
+  const [helpOpen, setHelpOpen] = useState(false)
   useEffect(() => { init() }, [init])
   if (!config) return <div className="h-full flex items-center justify-center text-muted italic font-editorial">Loading…</div>
   return (
     <HashRouter>
-      <GlobalShortcuts />
+      <GlobalShortcuts onOpenHelp={() => setHelpOpen(true)} />
       <div className="flex h-full">
         <Sidebar />
         <main className="flex-1 overflow-auto">
@@ -31,14 +33,23 @@ export function App() {
           </Routes>
         </main>
       </div>
+      {helpOpen && <KeymapModal onClose={() => setHelpOpen(false)} />}
     </HashRouter>
   )
 }
 
-function GlobalShortcuts() {
+function GlobalShortcuts({ onOpenHelp }: { onOpenHelp: () => void }) {
   const navigate = useNavigate()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const t = e.target as HTMLElement | null
+        const tag = t?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return
+        e.preventDefault()
+        onOpenHelp()
+        return
+      }
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return
       const k = e.key.toLowerCase()
       if (k === 'n') { e.preventDefault(); navigate('/editor/new') }
@@ -50,6 +61,6 @@ function GlobalShortcuts() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [navigate])
+  }, [navigate, onOpenHelp])
   return null
 }

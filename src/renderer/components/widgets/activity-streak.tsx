@@ -3,7 +3,19 @@ export function ActivityStreakWidget({ data }: { data: NonNullable<DashboardData
   const max = Math.max(1, ...data.days.map(d => d.count))
   return (
     <div className="card-surface p-5">
-      <div className="eyebrow mb-4">Last 90 days</div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="eyebrow">Last 90 days</div>
+        <div className="flex items-center gap-2 text-[11px] text-muted" aria-label="Legend: light for fewer reviews, dark for more">
+          <span>less</span>
+          <span className="flex gap-0.5">
+            <span className="w-3 h-3 rounded-sm" style={{ background: 'rgb(var(--border) / 0.7)' }} />
+            <span className="w-3 h-3 rounded-sm" style={{ background: 'rgb(var(--accent) / 0.35)' }} />
+            <span className="w-3 h-3 rounded-sm" style={{ background: 'rgb(var(--accent) / 0.65)' }} />
+            <span className="w-3 h-3 rounded-sm" style={{ background: 'rgb(var(--accent) / 1)' }} />
+          </span>
+          <span>more</span>
+        </div>
+      </div>
       <div className="grid grid-flow-col grid-rows-7 gap-[3px] mb-4">
         {data.days.map(d => (
           <div key={d.date} title={`${d.date}: ${d.count}`}

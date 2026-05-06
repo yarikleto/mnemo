@@ -28,7 +28,6 @@ export function DashboardRoute() {
 
   return (
     <div className="max-w-6xl mx-auto px-8 py-10">
-      <div className="eyebrow mb-1.5">Overview</div>
       <h1 className="font-editorial text-[28px] font-semibold leading-none mb-8">Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {enabled.map(id => {

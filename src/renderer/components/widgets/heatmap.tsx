@@ -14,11 +14,15 @@ export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatm
     <div className="card-surface p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="eyebrow">Retention heatmap</div>
-        <div className="flex items-center gap-1.5 text-[10px] text-muted">
-          <span className="w-2 h-2 rounded-sm bg-rose-500/90" /><span>weak</span>
-          <span className="w-2 h-2 rounded-sm bg-amber-400/90 ml-1" />
-          <span className="w-2 h-2 rounded-sm bg-emerald-400/90" />
-          <span className="w-2 h-2 rounded-sm bg-emerald-600/90" /><span>strong</span>
+        <div className="flex items-center gap-2 text-[11px] text-muted" aria-label="Legend: red for weak retention, green for strong">
+          <span>weak</span>
+          <span className="flex gap-0.5">
+            <span className="w-3 h-3 rounded-sm bg-rose-500/90" />
+            <span className="w-3 h-3 rounded-sm bg-amber-400/90" />
+            <span className="w-3 h-3 rounded-sm bg-emerald-400/90" />
+            <span className="w-3 h-3 rounded-sm bg-emerald-600/90" />
+          </span>
+          <span>strong</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-1">

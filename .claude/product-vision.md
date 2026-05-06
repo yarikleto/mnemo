@@ -51,7 +51,7 @@ The primary persona for v1 is **the maintainer themselves** — Mnemo is being d
 
 ## Auto-Update Strategy
 
-**`update.electronjs.org`** — free, official, requires a public GitHub repo with releases (which Mnemo has). Squirrel.Mac on macOS, Squirrel.Windows on Windows, no infrastructure to host. The architect can swap to `electron-updater` against GitHub Releases later if more control is needed.
+**`electron-updater` (≥ 6.3.9, CVE-2024-39698 floor) against GitHub Releases.** Free, no infrastructure to host, and — critically — supports macOS, Windows, and Linux AppImage. (Initial draft of this vision named `update.electronjs.org`; the architect overrode in ADR-006 because `update-electron-app` doesn't support Linux. The architect's call stands.) `verifyUpdateCodeSignature: true` is non-negotiable on macOS.
 
 Auto-update is **non-negotiable for v1**. A solo-maintainer desktop app where users get stuck on an old version is a support nightmare; silent in-the-background updates avoid that.
 

@@ -58,7 +58,7 @@ If a future feature requires design exploration, the designer will produce wiref
 
 **Distribution:** GitHub Releases only. No App Store, no Microsoft Store, no Snap, no Flatpak.
 
-**Auto-update:** `update.electronjs.org` (free for public GitHub repos with releases). Non-negotiable for v1.
+**Auto-update:** `electron-updater ≥ 6.3.9` against GitHub Releases. Non-negotiable for v1. (Initial draft of vision said `update.electronjs.org`; architect's ADR-006 overrode because `update-electron-app` doesn't support Linux AppImage.)
 
 **Lifecycle:** foreground app for v1. Background-resident with tray + due-card notifications is v2 territory.
 

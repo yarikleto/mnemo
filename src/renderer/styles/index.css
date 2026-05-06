@@ -235,3 +235,14 @@ body, aside, main, .card-surface,
 
 /* Checkbox accent */
 input[type=checkbox] { accent-color: rgb(var(--accent)); }
+
+/* Hide ugly native number-input spinners — we render our own stepper. */
+.input-no-spin::-webkit-inner-spin-button,
+.input-no-spin::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-no-spin {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

@@ -1,8 +1,81 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { WIDGET_INFO, type WidgetId } from '../../shared/constants'
 import type { Config } from '../../shared/schema'
 import { useAppStore } from '../stores/app-store'
 import { unwrap } from '../lib/api'
+
+function NumberField({ value, onChange, step = 1, min, max, ariaLabel }: {
+  value: number
+  onChange: (v: number) => void
+  step?: number
+  min?: number
+  max?: number
+  ariaLabel?: string
+}) {
+  const clamp = (v: number) => {
+    if (typeof min === 'number' && v < min) return min
+    if (typeof max === 'number' && v > max) return max
+    return v
+  }
+  const decimals = step.toString().split('.')[1]?.length ?? 0
+  const round = (v: number) => decimals ? Number(v.toFixed(decimals)) : v
+  const bump = (dir: 1 | -1) => onChange(clamp(round(value + dir * step)))
+
+  // Press-and-hold repeats — accelerates after the initial delay.
+  const holdTimer = useRef<number | null>(null)
+  const stopHold = () => {
+    if (holdTimer.current !== null) { window.clearTimeout(holdTimer.current); holdTimer.current = null }
+  }
+  const startHold = (dir: 1 | -1) => {
+    let interval = 240
+    const tick = () => {
+      bump(dir)
+      interval = Math.max(40, interval * 0.85)
+      holdTimer.current = window.setTimeout(tick, interval)
+    }
+    bump(dir)
+    holdTimer.current = window.setTimeout(tick, 320)
+  }
+
+  return (
+    <div className="group relative inline-flex items-center">
+      <input
+        type="number"
+        step={step}
+        min={min}
+        max={max}
+        value={value}
+        aria-label={ariaLabel}
+        onChange={e => {
+          const n = Number(e.target.value)
+          if (Number.isFinite(n)) onChange(n)
+        }}
+        className="input input-no-spin w-28 text-right font-mono pr-7 tabular-nums"
+      />
+      <div
+        className="absolute right-[5px] inset-y-[5px] flex flex-col gap-[2px] opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+        aria-hidden="true"
+      >
+        <button
+          type="button" tabIndex={-1}
+          onMouseDown={e => { e.preventDefault(); startHold(1) }}
+          onMouseUp={stopHold} onMouseLeave={stopHold}
+          className="flex-1 w-4 rounded-[3px] text-muted hover:text-accent hover:bg-border/60 active:scale-90 transition flex items-center justify-center"
+        >
+          <svg viewBox="0 0 8 5" className="w-[7px] h-[5px]" fill="currentColor"><path d="M4 0l4 5H0z"/></svg>
+        </button>
+        <button
+          type="button" tabIndex={-1}
+          onMouseDown={e => { e.preventDefault(); startHold(-1) }}
+          onMouseUp={stopHold} onMouseLeave={stopHold}
+          className="flex-1 w-4 rounded-[3px] text-muted hover:text-accent hover:bg-border/60 active:scale-90 transition flex items-center justify-center"
+        >
+          <svg viewBox="0 0 8 5" className="w-[7px] h-[5px]" fill="currentColor"><path d="M0 0h8L4 5z"/></svg>
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export function SettingsRoute() {
   const { config } = useAppStore()
@@ -83,9 +156,12 @@ export function SettingsRoute() {
               <div className="font-medium">Desired retention</div>
               <div className="text-[11.5px] text-muted">Target recall probability (0.5 – 0.99)</div>
             </div>
-            <input type="number" step="0.01" min={0.5} max={0.99} value={local.fsrs.desiredRetention}
-              onChange={e => setFsrs({ desiredRetention: Number(e.target.value) })}
-              className="input w-28 text-right font-mono" />
+            <NumberField
+              value={local.fsrs.desiredRetention}
+              step={0.01} min={0.5} max={0.99}
+              ariaLabel="Desired retention"
+              onChange={v => setFsrs({ desiredRetention: v })}
+            />
           </label>
           <div className="h-px bg-border" />
           <label className="flex items-center justify-between gap-4 text-[13px]">
@@ -93,9 +169,12 @@ export function SettingsRoute() {
               <div className="font-medium">Max interval</div>
               <div className="text-[11.5px] text-muted">Ceiling for spacing (days)</div>
             </div>
-            <input type="number" step="1" min={1} value={local.fsrs.maximumInterval}
-              onChange={e => setFsrs({ maximumInterval: Number(e.target.value) })}
-              className="input w-28 text-right font-mono" />
+            <NumberField
+              value={local.fsrs.maximumInterval}
+              step={1} min={1}
+              ariaLabel="Max interval"
+              onChange={v => setFsrs({ maximumInterval: v })}
+            />
           </label>
         </div>
       </section>

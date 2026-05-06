@@ -6,17 +6,56 @@ files:
   - dist/**
   - dist-electron/**
   - package.json
+asar: true
+
+# Code-signing certificate is supplied via env vars in CI
+# (CSC_LINK + CSC_KEY_PASSWORD on macOS). Locally these are unset and
+# electron-builder produces an ad-hoc-signed dev artifact.
+afterSign: build/notarize.cjs
+afterPack: build/fuses.cjs
+
+publish:
+  provider: github
+  owner: yarikleto
+  repo: mnemo
+  releaseType: draft
+
 mac:
   category: public.app-category.education
   icon: assets/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false  # we drive @electron/notarize from afterSign so we control logging
   target:
-    - dmg
-    - zip
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+        - universal
+    - target: zip
+      arch:
+        - arm64
+        - x64
+        - universal
+
 win:
   icon: assets/icon.png
-  target: nsis
+  target:
+    - target: nsis
+      arch: [x64]
+
 linux:
   icon: assets/icon.png
+  category: Education
   target:
-    - AppImage
-    - deb
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

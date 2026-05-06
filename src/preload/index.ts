@@ -34,6 +34,7 @@ const api: Api = {
   completeOnboarding: (input) => invoke('completeOnboarding', input),
   getDefaultVaultPath: () => invoke('getDefaultVaultPath'),
   copyDiagnostics: () => invoke('copyDiagnostics'),
+  restartToInstall: () => invoke('restartToInstall'),
   onCardChanged: (cb) => on('card-changed', cb),
   onCardAdded: (cb) => on('card-added', cb),
   onCardRemoved: (cb) => on('card-removed', cb),
@@ -42,7 +43,8 @@ const api: Api = {
   onMenuCommand: (cb) => {
     const offs = MENU_VERBS.map(verb => on(`menu:${verb}`, () => cb(verb as MenuVerb)))
     return () => offs.forEach(off => off())
-  }
+  },
+  onUpdateReady: (cb) => on('update:ready', cb)
 }
 
 contextBridge.exposeInMainWorld('api', api)

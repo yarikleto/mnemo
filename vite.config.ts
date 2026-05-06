@@ -19,7 +19,14 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/main',
-            rollupOptions: { external: ['electron', 'chokidar', 'fsevents', 'jszip', 'gray-matter'] }
+            rollupOptions: {
+              external: [
+                'electron',
+                'chokidar', 'fsevents',
+                'jszip', 'gray-matter',
+                'electron-updater', 'electron-log'
+              ]
+            }
           }
         }
       },

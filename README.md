@@ -43,6 +43,39 @@
 - Dark, light, and system themes
 - Cross-platform packaging for macOS, Windows, and Linux
 
+## Installation
+
+Mnemo ships as a single download per platform from [GitHub Releases](https://github.com/yarikleto/mnemo/releases).
+
+### macOS
+
+Download the latest `.dmg`, double-click, drag Mnemo into Applications, and launch. The build is signed with an Apple Developer ID and notarised, so Gatekeeper opens it without any "this app was downloaded from the internet" prompts.
+
+### Windows
+
+Download `Mnemo-Setup-X.Y.Z.exe`. The first launch will trip SmartScreen ("Windows protected your PC") because the v1 installer is **unsigned** — click **More info → Run anyway**. Signed Windows builds are a v1.x fast-follow once a few Windows users surface; until then the warning is the cost of admission.
+
+### Linux
+
+```bash
+chmod +x Mnemo-X.Y.Z.AppImage
+./Mnemo-X.Y.Z.AppImage
+```
+
+Some desktop environments will offer to integrate the AppImage into the launcher — accept if you want a menu entry. For Debian / Ubuntu users a `.deb` is also published:
+
+```bash
+sudo dpkg -i mnemo_X.Y.Z_amd64.deb
+```
+
+### Updates
+
+- **macOS** — Mnemo checks for new versions in the background and shows a "Restart to apply" banner when one is ready. No manual download required.
+- **Linux (AppImage)** — same in-app update flow as macOS.
+- **Linux (.deb), Windows** — manual download from GitHub Releases until v1.x signed builds land.
+
+You can switch the auto-update off entirely from **Settings → Updates**; Mnemo will stop checking for new versions and you'll need to download updates manually.
+
 ## Getting started
 
 ```bash
@@ -50,7 +83,7 @@ npm install
 npm run dev
 ```
 
-On first launch, pick a root folder — it becomes your vault.
+On first launch, the welcome screen lets you choose where to keep your cards (defaults to `~/Documents/mnemo`). You can change this later in **Settings → Data folder**.
 
 ## Card format
 

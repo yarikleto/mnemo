@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Required by hardenedRuntime when notarizing — V8 generates JIT pages
+       that the kernel will refuse to mark executable without this entitlement. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Required for some V8 paths and for native node modules; without this
+       hardenedRuntime kills the renderer process at startup. -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <!-- Mnemo opens vault folders the user picks via dialog.showOpenDialog. The
+       user-selected-files entitlement keeps these dialogs working under the
+       hardened runtime sandbox. -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+  <!-- Auto-update downloads tarballs and replaces the .app on disk. The
+       Library entitlement lets electron-updater write into ~/Library/Caches. -->
+  <key>com.apple.security.files.bookmarks.app-scope</key>
+  <true/>
+</dict>
+</plist>

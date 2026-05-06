@@ -29,6 +29,8 @@
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource/lora": "^5.2.8",
     "chokidar": "^3.6.0",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.3",
     "flexsearch": "^0.7.43",
     "gray-matter": "^4.0.3",
     "jszip": "^3.10.1",
@@ -44,6 +46,8 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@electron/fuses": "^1.8.0",
+    "@electron/notarize": "^2.5.0",
     "@playwright/test": "^1.45.0",
     "@types/node": "^20.12.0",
     "@types/react": "^18.3.0",

@@ -110,6 +110,10 @@ export function SettingsRoute() {
     const cfg = await unwrap(window.api.updateConfig({ externalEditor: s || null }))
     setLocal(cfg); useAppStore.setState({ config: cfg })
   }
+  const setAutoUpdate = async (enabled: boolean) => {
+    const cfg = await unwrap(window.api.updateConfig({ autoUpdate: { enabled } }))
+    setLocal(cfg); useAppStore.setState({ config: cfg })
+  }
 
   const sorted = [...local.dashboard.widgets].sort((a, b) => a.order - b.order)
 
@@ -198,12 +202,35 @@ export function SettingsRoute() {
         </div>
       </section>
 
-      <section>
+      <section className="mb-10">
         {sectionHeading('External editor')}
         <input type="text" placeholder="e.g. code, cursor, subl" value={local.externalEditor ?? ''}
           onChange={e => setExternalEditor(e.target.value)}
           className="input w-full font-mono" />
         <p className="text-[12px] text-muted mt-2 italic">Leave blank to use the system default opener.</p>
+      </section>
+
+      <section>
+        {sectionHeading('Updates')}
+        <div className="card-surface p-5">
+          <label className="flex items-center justify-between gap-4 text-[13px] cursor-pointer">
+            <div>
+              <div className="font-medium">Automatic updates</div>
+              <div className="text-[11.5px] text-muted">Check for new versions in the background and offer a restart-to-apply banner.</div>
+            </div>
+            <input
+              type="checkbox"
+              className="w-3.5 h-3.5 shrink-0"
+              checked={local.autoUpdate.enabled}
+              onChange={e => setAutoUpdate(e.target.checked)}
+            />
+          </label>
+          {!local.autoUpdate.enabled && (
+            <p className="text-[11.5px] text-muted mt-3 italic">
+              Mnemo will stop checking for new versions; you’ll need to download updates manually from GitHub.
+            </p>
+          )}
+        </div>
       </section>
     </div>
   )

@@ -75,6 +75,7 @@ export interface Api {
   completeOnboarding(input: { rootPath: string }): Promise<ApiResult<Config>>
   getDefaultVaultPath(): Promise<ApiResult<{ path: string }>>
   copyDiagnostics(): Promise<ApiResult<{ text: string }>>
+  restartToInstall(): Promise<ApiResult<void>>
 
   onCardChanged(cb: (id: string) => void): () => void
   onCardAdded(cb: (id: string) => void): () => void
@@ -82,6 +83,7 @@ export interface Api {
   onReviewRated(cb: (cardId: string) => void): () => void
   onIndexRebuilt(cb: () => void): () => void
   onMenuCommand(cb: (verb: MenuVerb) => void): () => void
+  onUpdateReady(cb: (info: { version: string }) => void): () => void
 }
 
 export const MENU_VERBS = [

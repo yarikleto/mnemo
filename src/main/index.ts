@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, net, session } from 'electron'
+import { app, BrowserWindow, protocol, net, session, crashReporter } from 'electron'
 import path from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { loadConfig } from './store/config'
@@ -6,7 +6,32 @@ import { CardIndex } from './store/index'
 import { Watcher } from './watcher'
 import { registerIpc } from './ipc/register'
 import { installAppMenu } from './menu'
+import { startAutoUpdater, setupUpdaterIpc } from './updater'
+import { restoreWindowState, bindWindowStateSaver } from './window-state'
 import { configPath, defaultRootPath } from './paths'
+import log, { configureLog } from './log'
+
+configureLog(app.getPath('userData'), app.isPackaged)
+
+// Local-first ethos: capture native crashes to userData/Crashpad/, never upload.
+crashReporter.start({ uploadToServer: false, submitURL: '' })
+
+// Single-instance lock — eliminates a vault-corruption hazard on Win/Linux
+// where two chokidar watchers + two CardIndex instances would otherwise race.
+// macOS already enforces app-singleton behaviour at the OS level; the handler
+// is harmless there.
+const gotLock = app.requestSingleInstanceLock()
+let mainWindow: BrowserWindow | null = null
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    if (!mainWindow.isVisible()) mainWindow.show()
+    mainWindow.focus()
+  })
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -43,9 +68,12 @@ async function createWindow() {
     })
   }
 
+  const restore = restoreWindowState()
   const win = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    x: restore.bounds.x,
+    y: restore.bounds.y,
+    width: restore.bounds.width,
+    height: restore.bounds.height,
     show: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),
@@ -54,6 +82,9 @@ async function createWindow() {
       sandbox: true
     }
   })
+  if (restore.maximized) win.maximize()
+  if (restore.fullscreen) win.setFullScreen(true)
+  bindWindowStateSaver(win)
 
   let config = await loadConfig(configPath(), defaultRootPath())
   const index = new CardIndex()
@@ -85,6 +116,11 @@ async function createWindow() {
   })
 
   installAppMenu(win)
+  setupUpdaterIpc(win)
+  startAutoUpdater(win, () => config)
+
+  mainWindow = win
+  win.on('closed', () => { if (mainWindow === win) mainWindow = null })
 
   if (process.env.VITE_DEV_SERVER_URL) {
     await win.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -93,5 +129,5 @@ async function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow)
+if (gotLock) app.whenReady().then(createWindow).catch(e => log.error('createWindow failed', e))
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })

@@ -1,0 +1,73 @@
+name: release
+
+# Fires on every v* tag push (the canonical release trigger) and is also
+# manually dispatchable from the Actions UI for re-runs / hotfixes.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# electron-builder publishes the artifacts into a draft GitHub Release using
+# the auto-injected GITHUB_TOKEN. The release stays in draft until the
+# maintainer reviews artifacts and flips it published; that's the moment the
+# auto-updater starts seeing the new version.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: mac
+          - os: windows-latest
+            target: win
+          - os: ubuntu-24.04
+            target: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck + unit tests
+        run: |
+          npm run typecheck
+          npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Package + publish (macOS — signed + notarized)
+        if: matrix.target == 'mac'
+        env:
+          # Developer ID cert .p12 base64 + password, supplied via repo secrets
+          # set up in TASK-003.
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          # Apple notary service creds — afterSign/notarize.cjs reads these.
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish always
+
+      - name: Package + publish (Windows — unsigned NSIS)
+        if: matrix.target == 'win'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
+
+      - name: Package + publish (Linux — AppImage + .deb)
+        if: matrix.target == 'linux'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --linux --publish always

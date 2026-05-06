@@ -14,6 +14,7 @@ import { importArchive, validateNamespace } from '../archive/import'
 import { patchConfig } from '../store/config'
 import { configPath, cardsDir, defaultRootPath } from '../paths'
 import { ulid } from '../id'
+import { logFilePath } from '../log'
 import type { Config, PromptFrontmatter } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
@@ -302,16 +303,25 @@ export function registerIpc(ctx: Ctx): () => void {
   })
 
   h('copyDiagnostics', VOID, async () => {
-    const lines = [
+    const head = [
       `Mnemo ${app.getVersion()}`,
       `Platform: ${process.platform} ${os.release()} (${process.arch})`,
       `Electron: ${process.versions.electron}`,
       `Chromium: ${process.versions.chrome}`,
       `Node: ${process.versions.node}`,
       `Vault: ${ctx.getConfig().rootPath || '(not picked yet)'}`,
-      `Onboarded: ${ctx.getConfig().onboardedAt ?? 'no'}`
+      `Onboarded: ${ctx.getConfig().onboardedAt ?? 'no'}`,
+      `AutoUpdate: ${ctx.getConfig().autoUpdate?.enabled !== false ? 'on' : 'off'}`
     ]
-    return { text: lines.join('\n') }
+    let logTail = ''
+    try {
+      const raw = await fs.readFile(logFilePath(), 'utf8')
+      const lines = raw.split('\n')
+      logTail = lines.slice(Math.max(0, lines.length - 50)).join('\n')
+    } catch {
+      logTail = '(no log file yet)'
+    }
+    return { text: `${head.join('\n')}\n\n--- main.log (last 50 lines) ---\n${logTail}` }
   })
 
   const onAdded = (id: string) => ctx.win.webContents.send('card-added', id)

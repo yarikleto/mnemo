@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Sidebar } from './components/sidebar'
 import { KeymapModal } from './components/keymap-modal'
+import { UpdateBanner } from './components/update-banner'
 import { useAppStore } from './stores/app-store'
 import { unwrap } from './lib/api'
 import { ReviewRoute } from './routes/review'
@@ -27,6 +28,8 @@ export function App() {
   return (
     <HashRouter>
       <OnboardingGate onboarded={onboarded} />
+      <LastRouteReplay onboarded={onboarded} />
+      <LastRouteRecorder />
       <GlobalShortcuts onOpenHelp={() => setHelpOpen(true)} />
       <MenuRouter />
       <Shell onboarded={onboarded} helpOpen={helpOpen} onCloseHelp={() => setHelpOpen(false)} />
@@ -39,11 +42,14 @@ function Shell({ onboarded, helpOpen, onCloseHelp }: { onboarded: boolean; helpO
   const showSidebar = onboarded && location.pathname !== '/onboarding'
   return (
     <>
-      <div className="flex h-full">
-        {showSidebar && <Sidebar />}
-        <main className="flex-1 overflow-auto">
-          <RoutedView />
-        </main>
+      <div className="flex flex-col h-full">
+        <UpdateBanner />
+        <div className="flex flex-1 min-h-0">
+          {showSidebar && <Sidebar />}
+          <main className="flex-1 overflow-auto">
+            <RoutedView />
+          </main>
+        </div>
       </div>
       {helpOpen && <KeymapModal onClose={onCloseHelp} />}
     </>
@@ -58,6 +64,45 @@ function OnboardingGate({ onboarded }: { onboarded: boolean }) {
       navigate('/onboarding', { replace: true })
     }
   }, [onboarded, location.pathname, navigate])
+  return null
+}
+
+// Persists the last visited route so the next launch lands the user back where
+// they were. Skips /onboarding so a quit-on-onboarding doesn't pin them there
+// next launch (the OnboardingGate handles that path independently).
+function LastRouteRecorder() {
+  const location = useLocation()
+  const config = useAppStore(s => s.config)
+  useEffect(() => {
+    if (!config?.onboardedAt || !config.rootPath) return
+    const p = location.pathname
+    if (!p || p === '/onboarding') return
+    if (p === config.lastRoute) return
+    const handle = window.setTimeout(() => {
+      window.api.updateConfig({ lastRoute: p }).then(r => {
+        if (r.ok) useAppStore.setState({ config: r.data })
+      })
+    }, 250)
+    return () => window.clearTimeout(handle)
+  }, [location.pathname, config?.onboardedAt, config?.rootPath, config?.lastRoute])
+  return null
+}
+
+// Replays the persisted lastRoute on first render after onboarding is done,
+// once per session. Skips when the user already navigated somewhere explicitly.
+function LastRouteReplay({ onboarded }: { onboarded: boolean }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const config = useAppStore(s => s.config)
+  const [done, setDone] = useState(false)
+  useEffect(() => {
+    if (done) return
+    if (!onboarded || !config?.lastRoute) { setDone(true); return }
+    if (location.pathname !== '/' && location.pathname !== '/review') { setDone(true); return }
+    if (config.lastRoute === '/onboarding') { setDone(true); return }
+    navigate(config.lastRoute, { replace: true })
+    setDone(true)
+  }, [onboarded, config?.lastRoute, location.pathname, navigate, done])
   return null
 }
 

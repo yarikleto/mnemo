@@ -8,9 +8,15 @@ files:
   - package.json
 asar: true
 
-# Code-signing certificate is supplied via env vars in CI
-# (CSC_LINK + CSC_KEY_PASSWORD on macOS). Locally these are unset and
-# electron-builder produces an ad-hoc-signed dev artifact.
+# v1 ships unsigned everywhere (decision 2026-05-07). The signing plumbing
+# stays armed: when CSC_LINK + APPLE_ID secrets appear in CI, the afterSign
+# notarize hook activates automatically and `hardenedRuntime` should be
+# flipped back to `true` (its required value under a real Developer ID).
+#
+# Why hardenedRuntime: false today — under an ad-hoc signature (no real
+# cert), hardenedRuntime triggers kernel-side JIT prohibition and the
+# renderer process is killed at startup. Off is the only safe value for
+# unsigned builds.
 afterSign: build/notarize.cjs
 afterPack: build/fuses.cjs
 
@@ -23,8 +29,10 @@ publish:
 mac:
   category: public.app-category.education
   icon: assets/icon.icns
-  hardenedRuntime: true
+  hardenedRuntime: false
   gatekeeperAssess: false
+  # entitlements are inert without hardenedRuntime; kept here so flipping
+  # to a signed posture is a single-line change.
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false  # we drive @electron/notarize from afterSign so we control logging

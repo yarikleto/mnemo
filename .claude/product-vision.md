@@ -38,11 +38,11 @@ The primary persona for v1 is **the maintainer themselves** — Mnemo is being d
 
 ## Target Platforms
 
-- **macOS** — primary, first-class. Apple Silicon (`arm64`) + Intel (`x64`), universal build. Min macOS 12 (Monterey). Signed with Developer ID + notarized via `notarytool`, stapled.
-- **Linux** — best-effort. AppImage + `.deb` produced on every release, unsigned. The expected user is comfortable with `chmod +x` and AppImage trust prompts.
-- **Windows** — best-effort. NSIS `.exe` produced on every release, unsigned for v1. Code-signing on Windows requires Azure Trusted Signing or DigiCert KeyLocker (no more cheap EV USB tokens since June 2023) — defer until there's enough Windows audience to justify the spend.
+- **macOS** — Apple Silicon (`arm64`) + Intel (`x64`), universal build. Min macOS 12 (Monterey). **Unsigned** for v1; first-launch right-click → Open clears Gatekeeper.
+- **Linux** — AppImage + `.deb` produced on every release, unsigned. The expected user is comfortable with `chmod +x` and AppImage trust prompts.
+- **Windows** — NSIS `.exe` produced on every release, unsigned. SmartScreen "More info → Run anyway" on first install.
 
-"All three at once" is a real answer because `electron-builder.yml` already targets all three; the cost is signing infrastructure, not platform support. v1 commits to **fully signed + notarized macOS** and **unsigned community-grade Linux + Windows**, with Windows signing as a fast-follow once a few Windows users surface.
+**v1 distribution posture (decided 2026-05-07): symmetric unsigned across all three platforms.** $99/yr Apple Developer enrollment + ~$100/yr Windows EV signing buys no feature the user values; the cost is a one-time first-launch friction prompt per platform that the README documents honestly. The signing pipeline (electron-builder hardened-runtime, `afterSign` notarize hook, `afterPack` fuses hook, Windows `azureSignOptions`) stays in tree dormant — re-activates the moment the maintainer pastes secrets in, no code change needed. This decision overrides the original 2026-05-06 "macOS first-class signed+notarized" stance.
 
 ## Distribution Channels
 
@@ -51,7 +51,7 @@ The primary persona for v1 is **the maintainer themselves** — Mnemo is being d
 
 ## Auto-Update Strategy
 
-**`electron-updater` (≥ 6.3.9, CVE-2024-39698 floor) against GitHub Releases.** Free, no infrastructure to host, and — critically — supports macOS, Windows, and Linux AppImage. (Initial draft of this vision named `update.electronjs.org`; the architect overrode in ADR-006 because `update-electron-app` doesn't support Linux. The architect's call stands.) `verifyUpdateCodeSignature: true` is non-negotiable on macOS.
+**`electron-updater` (≥ 6.3.9, CVE-2024-39698 floor) against GitHub Releases.** Free, no infrastructure to host, and — critically — supports macOS and Linux AppImage with unsigned builds. (Initial draft of this vision named `update.electronjs.org`; the architect overrode in ADR-006 because `update-electron-app` doesn't support Linux. The architect's call stands.) With unsigned builds the publisher comparison degenerates to null-vs-null and the verifier no-ops (per SPIKE-002). `verifyUpdateCodeSignature: true` stays on regardless — never disable it; if the maintainer ever signs, it's already armed.
 
 Auto-update is **non-negotiable for v1**. A solo-maintainer desktop app where users get stuck on an old version is a support nightmare; silent in-the-background updates avoid that.
 
@@ -92,8 +92,8 @@ The architect should not change this without a strong reason.
 
 ## The 11-Star Experience
 
-- **1-star:** Doesn't open. Gatekeeper blocks the unsigned `.dmg`.
-- **5-star:** Signed, notarized, downloads, opens, vault picker works, review flow works, file watcher works, auto-updates silently. (This is v1.)
+- **1-star:** Doesn't open. Crash on first launch, file watcher silently drops a card, auto-updater corrupts the install.
+- **5-star:** Downloads, opens (one right-click on first launch is fine), vault picker works, review flow works, file watcher works, auto-updates silently on macOS + AppImage. README owns the first-launch friction honestly. (This is v1.)
 - **11-star:** Feels like Bear-meets-Anki. Native window chrome on every OS. Spotlight-grade global "review now" hotkey. Native notifications when due cards stack up. Double-click `.mnemo.zip` in Finder to import. Drag a card file from Finder onto the dock to add it. Mac touchbar shortcuts for Again/Hard/Good/Easy. Multi-vault support so you can have separate vaults for "work" and "personal." iCloud/Dropbox sync just *works* because the vault is plain files. Plugin system so others can write custom widgets. Theme studio.
 
 **v1 lives at 5-star.** v2 picks one or two 11-star moves and ships them.
@@ -124,22 +124,22 @@ The single line: **"Anki, but your cards are markdown files you own."** Everythi
 
 ## MVP Definition
 
-The MVP is **a signed, notarized, downloadable macOS `.dmg` that auto-updates**, plus best-effort unsigned Linux + Windows builds. Specifically:
+The MVP is **a downloadable, auto-updating Mnemo on three platforms — all unsigned**, with first-launch friction documented honestly.
 
-- Signed with Developer ID, notarized via `notarytool`, stapled. Opens on a fresh Mac with no scary warnings.
-- First-run vault picker: a real onboarding screen that lets the user choose a vault before they hit the empty review screen. (Currently absent — this is the only meaningful product-surface gap before shipping.)
-- Auto-update via `update.electronjs.org` — wired, working, tested via at least one v1.0.0 → v1.0.1 round-trip.
+- macOS: `.dmg` from GitHub Releases. First launch is right-click → Open to clear Gatekeeper, once. README owns this.
+- Linux: AppImage + `.deb` from GitHub Releases. AppImage needs `chmod +x`.
+- Windows: NSIS `.exe` from GitHub Releases. SmartScreen "More info → Run anyway" on first install.
+- First-run vault picker: a real onboarding screen that lets the user choose a vault before they hit the empty review screen. (Landed 2026-05-07.)
+- Auto-update via `electron-updater` against GitHub Releases — wired, working on macOS + Linux AppImage, tested via at least one v0.0.x → v0.0.y round-trip on a packaged build before promoting to v1.0.0.
 - All current features: review, browse, card-view, dashboard with 6 widgets, editor, settings, namespace tree, archive export/import, full-text search, file watcher.
-- Linux: AppImage + `.deb`, unsigned, downloadable from GitHub Releases.
-- Windows: NSIS `.exe`, unsigned, downloadable from GitHub Releases. Users see SmartScreen warning — documented in the README under "Installation."
 
-If we're not slightly embarrassed by the unsigned Windows warning at v1, we launched too late.
+If we're not slightly embarrassed by the right-click-to-open / SmartScreen / `chmod +x` first-launch friction, we launched too late.
 
 ## Verification Criteria
 
 The spec is a contract. Each item below is observable by a human after using the product. The system design and tasks must trace back to these.
 
-- [ ] **VC-1** A new user can download the macOS `.dmg` from GitHub Releases, double-click it, drag Mnemo to Applications, launch it, and reach the review screen — with no Gatekeeper "unidentified developer" warning at any point — in under 90 seconds.
+- [ ] **VC-1** A new user can download the macOS `.dmg` from GitHub Releases, drag Mnemo to Applications, right-click → Open once to clear the Gatekeeper prompt, and reach the onboarding screen in under 90 seconds. (Right-click is required only on the first launch; subsequent launches are silent.)
 - [ ] **VC-2** First-run UX: on launch with no vault configured, the user sees an onboarding screen that lets them pick a folder. After picking, the app navigates to `/review` (empty state) without further setup.
 - [ ] **VC-3** Editing a card's markdown in an external editor (e.g. VS Code) updates the in-app view (browse list, dashboard counts, review queue if applicable) within 1 second of save, without the user reloading the window.
 - [ ] **VC-4** Closing and reopening the app preserves the vault selection and the last visited route, on the same display the user last used.
@@ -152,11 +152,11 @@ The spec is a contract. Each item below is observable by a human after using the
 
 Imagine v1 ships and adoption stalls. Top 3 risks:
 
-1. **Code-signing never gets done end-to-end.** Apple Developer enrollment is a 2-day chore, and Windows signing has gotten genuinely expensive (Azure Trusted Signing tenant + business validation since June 2023). If the maintainer doesn't push through, every prospective user hits a Gatekeeper / SmartScreen warning, decides Mnemo is sketchy, and uninstalls before the first review. **Mitigation:** Apple Developer enrollment is the very first DevOps action; Windows signing is explicitly deferred but flagged in the README so users know what they're seeing.
+1. **First-launch friction looks scarier than it is.** Decision shifted 2026-05-07: every platform shows a one-time prompt (Gatekeeper "right-click → Open", SmartScreen "More info → Run anyway", AppImage `chmod +x`). The bet is that the technically-pedantic v1 audience has clicked through these prompts dozens of times for other niche tools and won't be put off by ours. **Mitigation:** README owns the friction directly with the exact wording the user will see — no surprises. If the audience proves to actually bounce on these prompts, the signing pipeline is wired and waits behind a single secret-paste step; flipping is a one-day reversal, not a re-architecture.
 
-2. **Auto-update breaks silently and users get stranded on a buggy v1.0.0.** `update.electronjs.org` is reliable but the *first* end-to-end auto-update requires a real release-day rehearsal; if v1.0.0 → v1.0.1 doesn't actually round-trip, users won't tell us — they'll just stay on v1.0.0 and rate the app one star when they hit a bug we already fixed. **Mitigation:** the walking skeleton must include a v0.0.1 → v0.0.2 auto-update test before any feature work; tester verifies on packaged builds, not dev mode.
+2. **Auto-update breaks silently and users get stranded on a buggy v1.0.0.** `electron-updater` is reliable but the *first* end-to-end auto-update requires a real release-day rehearsal; if v1.0.0 → v1.0.1 doesn't actually round-trip, users won't tell us — they'll just stay on v1.0.0 and rate the app one star when they hit a bug we already fixed. With unsigned builds the publisher comparison degenerates to null-vs-null (per SPIKE-002), so the verifier no-ops — benign but means a subtle break would slip past unit tests. **Mitigation:** the walking skeleton must include a v0.0.1 → v0.0.2 auto-update test before any feature work; tester verifies on packaged builds, not dev mode.
 
-3. **Onboarding cliff kills first-impression.** Today, first launch dumps the user into an empty `/review` against `~/Documents/mnemo`. A friend tries Mnemo, sees "no cards due," and leaves. **Mitigation:** the first-run vault picker is on the MVP critical path, not a nice-to-have. Without it, the demo to friends is broken.
+3. ~~**Onboarding cliff kills first-impression.**~~ — **MITIGATED 2026-05-07.** First-run vault picker landed: the welcome screen offers `~/Documents/mnemo` as the default plus a "Choose a folder…" button. Existing-user upgrades get a silent backward-compat migration (no onboarding for them).
 
 ## Open Questions
 

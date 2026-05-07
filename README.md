@@ -49,7 +49,11 @@ Mnemo ships as a single download per platform from [GitHub Releases](https://git
 
 ### macOS
 
-Download the latest `.dmg`, double-click, drag Mnemo into Applications, and launch. The build is signed with an Apple Developer ID and notarised, so Gatekeeper opens it without any "this app was downloaded from the internet" prompts.
+Download the latest `.dmg`, double-click, drag Mnemo into Applications. On first launch Gatekeeper will say:
+
+> *"Mnemo cannot be opened because Apple cannot check it for malicious software."*
+
+Right-click the app in Applications → **Open** → confirm in the dialog that appears. macOS remembers the choice for future launches. The v1 builds are unsigned by design — Mnemo is a single-maintainer side project, and a $99/yr Apple Developer enrollment buys nothing the user actually wants. If signed builds ever land, they'll be a fast-follow.
 
 ### Windows
 
@@ -70,9 +74,8 @@ sudo dpkg -i mnemo_X.Y.Z_amd64.deb
 
 ### Updates
 
-- **macOS** — Mnemo checks for new versions in the background and shows a "Restart to apply" banner when one is ready. No manual download required.
-- **Linux (AppImage)** — same in-app update flow as macOS.
-- **Linux (.deb), Windows** — manual download from GitHub Releases until v1.x signed builds land.
+- **macOS, Linux (AppImage)** — Mnemo checks for new versions in the background and shows a "Restart to apply" banner when one is ready.
+- **Linux (.deb), Windows** — manual download from GitHub Releases. (Auto-update on these targets needs a signed publisher, which v1 doesn't have.)
 
 You can switch the auto-update off entirely from **Settings → Updates**; Mnemo will stop checking for new versions and you'll need to download updates manually.
 

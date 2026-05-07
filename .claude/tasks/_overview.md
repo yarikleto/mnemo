@@ -15,15 +15,21 @@
 
 ## Milestones at a glance
 
-| Milestone | Goal | Status gate |
-|---|---|---|
-| **M0** Walking skeleton: signed, notarized, self-updating macOS build | A real downloadable signed `.dmg` from GitHub Releases that auto-updates v0.0.1 → v0.0.2 end-to-end on a fresh Mac. | TVC-A1, A2, A3, A4, E1, E2, E3, E4 all pass. |
-| **M1** First-run UX + single-window polish | New users land cleanly, the macOS menu feels native, the window remembers where it was, only one instance runs, basic logs exist. | TVC-B1–B4, D1–D3, H1–H2 pass; `fullscreen: true` removed; menu commands work. |
-| **M2** Linux + Windows unsigned builds | Tag push produces working unsigned AppImage / .deb / NSIS artifacts; README documents the SmartScreen / AppImage prompts. | Manual install + smoke test on each platform; auto-update smoke on AppImage. |
-| **M3** (post-v1, fast-follow) Windows code-signing | Once Azure Trusted Signing tenant lands, NSIS is signed, SmartScreen quiet. | A signed Windows artifact passes a fresh-machine launch with no SmartScreen warning. |
+| Milestone | Goal | Status gate | State (2026-05-07) |
+|---|---|---|---|
+| **M0** Walking skeleton: signed, notarized, self-updating macOS build | A real downloadable signed `.dmg` from GitHub Releases that auto-updates v0.0.1 → v0.0.2 end-to-end on a fresh Mac. | TVC-A1, A2, A3, A4, E1, E2, E3, E4 all pass. | **Code complete.** Blocked on TASK-001/002/003 client credentials and TASK-017/018 release rehearsal. |
+| **M1** First-run UX + single-window polish | New users land cleanly, the macOS menu feels native, the window remembers where it was, only one instance runs, basic logs exist. | TVC-B1–B4, D1–D3, H1–H2 pass; `fullscreen: true` removed; menu commands work. | **Done.** Onboarding + native menu + window-state + lastRoute + single-instance lock + electron-log + crashReporter all in tree on `main`. |
+| **M2** Linux + Windows unsigned builds | Tag push produces working unsigned AppImage / .deb / NSIS artifacts; README documents the SmartScreen / AppImage prompts. | Manual install + smoke test on each platform; auto-update smoke on AppImage. | **Done in code.** Workflow legs land on tag push; manual install smoke gates on the v0.0.x rehearsal. |
+| **M3** (post-v1, fast-follow) Windows code-signing | Once Azure Trusted Signing tenant lands, NSIS is signed, SmartScreen quiet. | A signed Windows artifact passes a fresh-machine launch with no SmartScreen warning. | **Deferred** until ≥ 5 Windows users surface (per vision). |
 
 Total milestones: **4** (M0–M3).
 Total tasks: **35** (TASK-001 … TASK-035) + **3 spikes** (SPIKE-001 … SPIKE-003).
+
+**Done in code:** TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009, TASK-013, TASK-014, TASK-015, TASK-016, TASK-019, TASK-020, TASK-021, TASK-022, TASK-023, TASK-024, TASK-025, TASK-026, TASK-028, TASK-029, TASK-030, TASK-031, TASK-032, TASK-033, TASK-034, TASK-035, TASK-036, plus all three spikes (SPIKE-001, SPIKE-002, SPIKE-003).
+
+**Pending (client / calendar):** TASK-001 (Apple enrollment) → TASK-002 (`.p12` export) → TASK-003 (GitHub secrets) → TASK-017 (cut v0.0.1) → TASK-018 (cut v0.0.2 + round-trip rehearsal) → v1.0.0.
+
+**Deferred:** TASK-FF-1, TASK-FF-2 (post-v1).
 
 ---
 

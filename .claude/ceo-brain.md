@@ -1,5 +1,5 @@
 # CEO Knowledge Base — Mnemo
-> Last updated: 2026-05-06
+> Last updated: 2026-05-07
 
 ## Mission
 
@@ -7,18 +7,35 @@
 
 ## Current State
 
-**Feature-complete MVP, security-hardened, not yet shipped.**
+**Code-complete v1. Waits on Apple Developer credentials before the first signed release tag.**
 
 The application is being daily-driven by its author (the user). All core features work: review with FSRS, browse, dashboard with 6 widgets, in-app authoring, archive export/import, full-text search, file watcher live-syncing changes from external editors, namespace tree, deck delete, dark/light/system themes. The codebase is well-structured with strict main/preload/renderer separation, contextIsolation + sandbox enabled, IPC handlers Zod-validated, custom CSP, sandboxed `mnemo-asset:` protocol for vault images.
 
-The most recent five PRs (Apr 23–30) are all security hardening (CSP, URL sanitization, ULID validation, IPC namespace validation, archive path-traversal). The author has stopped adding features and is battening down hatches — a clear "ready to ship" signal.
+Between 2026-05-06 and 2026-05-07 the M0 / M1 / M2 release surface landed in code:
 
-**What's blocking real shipping:**
-1. No code signing (Apple Developer enrollment not yet done; Windows signing tenant not yet provisioned).
-2. No notarization step in `electron-builder.yml` (no `afterSign` hook, no `@electron/notarize`).
-3. No auto-update wiring (no `electron-updater` dep, no feed config).
-4. No CI (no `.github/workflows/`); all packaging is manual via `npm run dist:*` on the dev's machine.
-5. No first-run vault picker — first launch dumps the user into an empty `/review` against `~/Documents/mnemo`.
+- **First-run vault picker** (`/onboarding`) with backward-compat silent migration for existing users. Sidebar suppressed pre-onboarding; "Change vault…" available in Settings.
+- **Native macOS application menu** (Mnemo / File / Edit / View / Window / Help) with `role:` items for stock accelerators and `menu:<verb>` push events for the app's custom commands. `Menu.setApplicationMenu(null)` on Win/Linux.
+- **Window-state persistence** (`window-state.json`, separate from config.json) with multi-monitor clamp, debounced 500 ms saves, sync flush on `before-quit`.
+- **`lastRoute` persistence** so quit-and-relaunch lands the user back where they were.
+- **Single-instance lock** with `second-instance` focus handler.
+- **Auto-update** via `electron-updater@^6.3.9` against GitHub Releases, gated by `app.isPackaged`. 30 s startup delay, 6 h poll, `verifyUpdateCodeSignature` ON. Renderer-side `<UpdateBanner>` and Settings → Updates toggle.
+- **`electron-builder.yml`** with `publish: github`, hardened-runtime + entitlements, universal mac DMG, `afterSign` notarize hook, `afterPack` fuses hook (8 fuses per ADR-012).
+- **CI** at `.github/workflows/release.yml` — 3-leg matrix on `macos-14` + `windows-latest` + `ubuntu-24.04`, publish-as-draft to GitHub Releases on every `v*` tag.
+- **Logging + crash reporting** — `electron-log` rotating file at `userData/logs/main.log`; `crashReporter.start({ uploadToServer: false })`; `copyDiagnostics` IPC tails the last 50 log lines into the clipboard.
+- **Playwright e2e specs** — onboarding (TVC-B1/B2), live-edit (TVC-C2), window-state + lastRoute (TVC-D1/D3), offline (TVC-F1).
+- **Animation polish + F-013 external-edit conflict UX** — modal pop-ins, route fade-ins, OS-level `prefers-reduced-motion` honored, conflict banner in editor when an external write would clobber unsaved changes.
+- **README installation section** per platform (Gatekeeper, SmartScreen, AppImage `chmod +x`).
+
+Vitest 96/96 passing, typecheck clean, `npm run build` clean, packaged-bundle boot smoke verified on a fresh `userData`.
+
+**What's still blocking the actual `v1.0.0` tag (all maintainer-side, no more code work):**
+
+1. **Apple Developer enrollment** ($99/yr, ~2-day approval). Handoff guide: `.claude/handoff/apple-developer-enrollment.md`.
+2. **Developer ID `.p12` export + app-specific password.** Handoff guide: `.claude/handoff/github-secrets.md` (covers both this and the next step).
+3. **Six GitHub Actions secrets** pasted into the repo's Settings → Secrets and variables → Actions.
+4. **The release-day rehearsal** — cut `v0.0.1`, then `v0.0.2`, observe the auto-update round-trip end-to-end on a fresh Mac. Procedure documented in `.claude/handoff/release-runbook.md` and `.claude/handoff/release-rehearsal.md`. Until this passes, no `v1.0.0` tag.
+
+Until those four land, the CI workflow runs but `notarize.cjs` skips with a "secrets not set" log line and the .dmg ships ad-hoc-signed only.
 
 ## The Bet
 
@@ -28,14 +45,16 @@ The most recent five PRs (Apr 23–30) are all security hardening (CSP, URL sani
 
 In execution order:
 
-1. **First-run vault picker** (product surface gap, blocks MVP). Onboarding screen at first launch lets the user choose a vault; without it, every demo to a friend is broken. Small effort, large UX win.
-2. **macOS code signing + notarization end-to-end** (DevOps). Apple Developer enrollment → Developer ID cert → `electron-builder.yml` `afterSign` hook → `@electron/notarize` → `notarytool` → staple. The very first DevOps action.
-3. **Auto-update via `update.electronjs.org`** (DevOps + Architect). Free for public GitHub repos. Wire it. Rehearse a v0.0.1 → v0.0.2 round-trip on a packaged build before declaring it working.
-4. **CI matrix** (DevOps). GitHub Actions on `macos-14` (arm64) + `macos-13` (x64) + `windows-latest` + `ubuntu-24.04`. Build artifacts on tag. Sign + notarize on macOS. Publish to GitHub Releases.
-5. **Cut v1.0.0**. Signed Mac DMG, unsigned AppImage/deb, unsigned Windows NSIS. README updated with install instructions and the SmartScreen-warning explainer.
-6. **Tester pass on the packaged build** (Tester + Manual-QA). Vitest already covers unit + integration well (88/88 passing). What's missing is `electron-playwright-helpers` against the actual signed `.dmg`, and an exploratory pass on a fresh Mac without dev tools.
-7. **Windows signing fast-follow** (DevOps). Azure Trusted Signing tenant once a few Windows users surface.
-8. **v2 surface decisions**: tray + due-card notifications? Multi-vault? Anki importer? Defer until v1 has been in real use for ~30 days.
+1. ~~**First-run vault picker**~~ — **DONE** 2026-05-07. `/onboarding` route, default vault path button, folder picker, silent backward-compat for existing users.
+2. **Apple Developer enrollment + secrets** (CLIENT). The 2-day Apple-side wait is the long pole. Handoff: `apple-developer-enrollment.md` → `github-secrets.md`. **This is the ONLY thing standing between the current main and a real signed v1.0.0.**
+3. ~~**electron-builder signing + notarization config**~~ — **DONE** 2026-05-07. `afterSign` notarize hook, `afterPack` fuses hook, hardened-runtime entitlements, universal mac DMG. Activates the moment TASK-003's secrets land.
+4. ~~**Auto-update wiring**~~ — **DONE** 2026-05-07. `electron-updater@^6.3.9` against GitHub Releases (not `update.electronjs.org` — overridden by ADR-006 because `update-electron-app` doesn't support Linux AppImage). Renderer banner + Settings toggle wired.
+5. ~~**CI matrix**~~ — **DONE** 2026-05-07. `.github/workflows/release.yml` covers `macos-14` + `windows-latest` + `ubuntu-24.04`, publish-as-draft on `v*` tag. `macos-13` x64 leg removed — SPIKE-003 confirmed `macos-14` produces a working universal DMG.
+6. **Cut v0.0.1 → v0.0.2 round-trip rehearsal** (CLIENT, after #2). Required before `v1.0.0`. Runbook: `release-runbook.md` § "Round-trip rehearsal protocol".
+7. **Cut v1.0.0.** Signed Mac DMG, unsigned AppImage/deb, unsigned Windows NSIS. README install section already lands the platform expectations.
+8. **Tester pass on the packaged build.** Vitest 96/96 passing; Playwright e2e specs exist for onboarding / live-edit / window-state / offline against `dist-electron/main/index.js`. What's still missing is exploratory testing on a fresh Mac without dev tools after a real signed DMG exists.
+9. **Windows signing fast-follow** — TASK-FF-1/FF-2. Azure Trusted Signing tenant once ≥ 5 Windows users surface. Handoff: `windows-signing-fastfollow.md`.
+10. **v2 surface decisions**: tray + due-card notifications? Multi-vault? Anki importer? Defer until v1 has been in real use for ~30 days.
 
 ## Product Vision
 
@@ -77,9 +96,9 @@ Specifically deferred from MVP:
 
 ## Pre-Mortem: Why This Could Fail
 
-1. **Code-signing never lands end-to-end.** Apple Developer enrollment + Windows signing tenant are bureaucratic chores; if they slip, every prospective user hits a Gatekeeper/SmartScreen warning and bails. *Mitigation:* DevOps owns this as priority #2 above; Apple enrollment is the very first action.
-2. **Auto-update silently breaks.** First end-to-end auto-update needs a real release-day rehearsal; if v1.0.0 → v1.0.1 doesn't round-trip, users stay stuck on v1.0.0 forever. *Mitigation:* the walking skeleton requires a v0.0.x → v0.0.x+1 round-trip on a packaged build before any v1.0.0 work.
-3. **Onboarding cliff.** First launch with no vault picker = empty review screen = bounce. *Mitigation:* first-run vault picker is on the MVP critical path.
+1. **Code-signing never lands end-to-end.** Apple Developer enrollment + Windows signing tenant are bureaucratic chores; if they slip, every prospective user hits a Gatekeeper/SmartScreen warning and bails. *Mitigation:* the entire `electron-builder.yml` + `afterSign` + `afterPack` plumbing already sits in tree behind a "secrets present?" check, so the moment enrollment lands the next CI run produces a signed + notarized DMG with no further code work. The risk is now purely a calendar risk on Apple's side.
+2. **Auto-update silently breaks on first ship.** Even with `electron-updater` wired, the v0.0.1 → v0.0.2 round-trip on a real signed Mac is the only way to know the publisher signature, blockmap diffing, and `quitAndInstall` actually work end-to-end. *Mitigation:* the rehearsal is documented in `release-runbook.md`; client must pass it before promoting a `v0.0.x-rc` to a real `v1.0.0`.
+3. ~~**Onboarding cliff.**~~ — **MITIGATED** by the `/onboarding` route landed 2026-05-07. Backward-compat silent migration ensures existing-user upgrades don't regress.
 
 ## Constraints
 
@@ -91,10 +110,13 @@ Specifically deferred from MVP:
 
 ## Key Decisions Log
 
+- **2026-05-07** — M0/M1/M2 code surface landed in 5 commits on `main` (`c42515c` → `5d51a9b`): motion polish + F-013, custom number stepper, onboarding + native menu + fullscreen revert, signed/notarized macOS pipeline, auto-update, window-state, logging, CI. Code-only — credentials still pending.
+- **2026-05-07** — Decided (architect ADR-006 ratified, knowledge base now matches): `electron-updater@^6.3.9` against GitHub Releases, NOT `update.electronjs.org`. Latter doesn't support Linux AppImage; ours does (per SPIKE-001 findings).
+- **2026-05-07** — Decided (per SPIKE-003): single `macos-14` arm64 runner produces the universal DMG. No separate `macos-13` x64 leg. Saves ~5 min CI time per release.
+- **2026-05-07** — Decided (per SPIKE-002): unsigned-to-unsigned auto-update on Windows works (publisher comparison is null-vs-null, effectively no-op). Unsigned → signed transition (post-M3) requires a one-time manual download — never disable `verifyUpdateCodeSignature`.
 - **2026-05-06** — Project kickoff (CEO `init` skill, existing-project mode). Vision approved by user. Next: architect produces system design ADRs around code-signing pipeline, auto-update wiring, first-run vault picker, CI matrix.
 - **2026-05-06** — Decided: foreground app for v1; tray+notifications deferred to v2.
 - **2026-05-06** — Decided: GitHub Releases only for distribution; no stores.
-- **2026-05-06** — Decided: `update.electronjs.org` for auto-update (free, official, public-repo path).
 - **2026-05-06** — Decided: macOS first-class signed+notarized; Linux+Windows best-effort unsigned at v1; Windows signing as fast-follow.
 - **2026-04-30** — (User) Completed CSP hardening + markdown URL sanitization (last security PR before kickoff).
 - **2026-04-23 → 2026-04-30** — (User) Five-PR security hardening sweep: archive path-traversal, IPC namespace validation, ULID format constraint, CSP + URL sanitization.

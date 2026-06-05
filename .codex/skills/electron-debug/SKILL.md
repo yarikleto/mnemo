@@ -1,1 +1,0 @@
-../../../.claude/skills/electron-debug/SKILL.md

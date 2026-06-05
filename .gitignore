@@ -1,5 +1,11 @@
 .superpowers/
 docs/superpowers/
+.claude/
+.codex/
+CLAUDE.md
+Claude.md
+CODEX.md
+codex.md
 node_modules/
 dist/
 dist-electron/

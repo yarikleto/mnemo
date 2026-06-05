@@ -1,1 +1,0 @@
-../../../.claude/skills/creating-card/SKILL.md

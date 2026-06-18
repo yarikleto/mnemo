@@ -110,7 +110,8 @@ body, aside, main, .card-surface,
   }
   .input-bare {
     @apply bg-transparent text-fg placeholder:text-muted/50
-           border-0 px-0 focus:outline-none focus:ring-0;
+           border-0 px-1 -mx-1 rounded
+           focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/40;
   }
   .kbd {
     @apply inline-flex items-center justify-center min-w-[1.5rem] h-[1.4rem]

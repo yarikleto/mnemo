@@ -26,12 +26,15 @@ export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatm
         </div>
       </div>
       <div className="flex flex-wrap gap-1">
-        {data.map((c, i) => (
-          <div key={c.cardId} onClick={() => navigate(`/card/${c.cardId}`)}
-               title={`${promptPreview(c.promptText, 80)} · ${Math.round(c.retention * 100)}%`}
-               className={`w-3.5 h-3.5 rounded-[2px] cursor-pointer transition hover:scale-125 hover:shadow-sm animate-pop-soft ${color(c.retention)}`}
-               style={{ animationDelay: `${Math.min(i * 6, 600)}ms` }} />
-        ))}
+        {data.map((c, i) => {
+          const tip = `${promptPreview(c.promptText, 80)} · ${Math.round(c.retention * 100)}%`
+          return (
+            <button key={c.cardId} type="button" onClick={() => navigate(`/card/${c.cardId}`)}
+                    title={tip} aria-label={tip}
+                    className={`block p-0 w-3.5 h-3.5 rounded-[2px] cursor-pointer transition hover:scale-125 hover:shadow-sm animate-pop-soft focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/60 ${color(c.retention)}`}
+                    style={{ animationDelay: `${Math.min(i * 6, 600)}ms` }} />
+          )
+        })}
       </div>
     </div>
   )

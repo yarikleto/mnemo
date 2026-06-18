@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CardMeta } from '../../shared/schema'
 import { unwrap } from '../lib/api'
 import { promptPreview } from '../../shared/prompt'
+import { useModalA11y } from '../lib/use-modal-a11y'
 
 type Props = { onClose: () => void }
 
@@ -14,6 +15,8 @@ export function ExportDialog({ onClose }: Props) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  useModalA11y(panelRef)
 
   useEffect(() => {
     window.api.listCards().then(r => {
@@ -98,11 +101,16 @@ export function ExportDialog({ onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[720px] max-h-[88vh] flex flex-col animate-pop-in"
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-dialog-title"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[720px] max-h-[88vh] flex flex-col animate-pop-in focus:outline-none"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-          <div className="eyebrow">Export cards</div>
+          <div id="export-dialog-title" className="eyebrow">Export cards</div>
           <button onClick={onClose} className="btn !py-1 !px-2.5 !text-[12px]">
             Close <span className="kbd">Esc</span>
           </button>

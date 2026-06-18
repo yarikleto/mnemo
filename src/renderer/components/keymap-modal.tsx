@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useModalA11y } from '../lib/use-modal-a11y'
 
 type Binding = { keys: string[]; label: string }
 type Section = { title: string; bindings: Binding[] }
@@ -63,6 +64,8 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
 const renderKey = (k: string) => k === 'Cmd' ? (isMac ? '⌘' : 'Ctrl') : k
 
 export function KeymapModal({ onClose }: { onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  useModalA11y(panelRef)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
     window.addEventListener('keydown', onKey)
@@ -73,12 +76,14 @@ export function KeymapModal({ onClose }: { onClose: () => void }) {
     <div
       className="fixed inset-0 z-50 bg-fg/30 backdrop-blur-sm flex items-center justify-center p-8 animate-fade-in"
       onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="keymap-modal-title"
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[640px] max-h-[88vh] flex flex-col animate-pop-in"
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="keymap-modal-title"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[640px] max-h-[88vh] flex flex-col animate-pop-in focus:outline-none"
         onClick={e => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">

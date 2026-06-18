@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ArchivePreview, ImportSummary } from '../../shared/api'
 import { unwrap } from '../lib/api'
 import { useAppStore } from '../stores/app-store'
+import { useModalA11y } from '../lib/use-modal-a11y'
 
 type Props = { onClose: () => void }
 
@@ -19,6 +20,8 @@ export function ImportDialog({ onClose }: Props) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const { refreshNamespaces } = useAppStore()
+  const panelRef = useRef<HTMLDivElement>(null)
+  useModalA11y(panelRef)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -65,11 +68,16 @@ export function ImportDialog({ onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[520px] flex flex-col animate-pop-in"
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-dialog-title"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[520px] flex flex-col animate-pop-in focus:outline-none"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-          <div className="eyebrow">Import archive</div>
+          <div id="import-dialog-title" className="eyebrow">Import archive</div>
           <button onClick={onClose} className="btn !py-1 !px-2.5 !text-[12px]">
             Close <span className="kbd">Esc</span>
           </button>

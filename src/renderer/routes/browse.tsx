@@ -116,7 +116,17 @@ export function BrowseRoute() {
                   <tr
                     key={r.id}
                     onClick={() => navigate(`/card/${r.id}`)}
-                    className={`group cursor-pointer transition-colors hover:bg-accent/5 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
+                    onKeyDown={e => {
+                      if (e.target !== e.currentTarget) return
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(`/card/${r.id}`)
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Open card: ${firstPromptPreview(r)}`}
+                    className={`group cursor-pointer transition-colors hover:bg-accent/5 focus:outline-none focus-visible:bg-accent/5 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent/40 ${i === filtered.length - 1 ? '' : 'border-b border-border/60'}`}
                   >
                     <td className="px-4 py-3 font-editorial text-[14.5px] text-fg">
                       <span>{firstPromptPreview(r)}</span>
@@ -137,8 +147,8 @@ export function BrowseRoute() {
                     <td className="px-3 py-3 text-right">
                       <button
                         onClick={e => handleDelete(e, r)}
-                        aria-label={`Delete card`}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[12px] text-muted hover:text-danger px-2 py-1"
+                        aria-label={`Delete card: ${firstPromptPreview(r)}`}
+                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity text-[12px] text-muted hover:text-danger px-2 py-1"
                       >
                         ✕
                       </button>

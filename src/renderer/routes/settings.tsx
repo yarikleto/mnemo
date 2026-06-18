@@ -154,17 +154,19 @@ export function SettingsRoute() {
       <section className="mb-10">
         {sectionHeading('Dashboard widgets')}
         <div className="card-surface divide-y divide-border overflow-hidden">
-          {sorted.map(w => {
+          {sorted.map((w, i) => {
             const info = WIDGET_INFO[w.id]
             return (
               <div key={w.id} className="flex items-center gap-3 px-4 py-3">
-                <input type="checkbox" checked={w.enabled} onChange={() => toggle(w.id)} className="w-3.5 h-3.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium">{info.title}</div>
-                  <div className="text-[11.5px] text-muted mt-0.5 leading-snug">{info.description}</div>
-                </div>
-                <button onClick={() => move(w.id, -1)} className="btn-ghost !p-1.5 text-muted hover:text-fg shrink-0" aria-label="Move up">↑</button>
-                <button onClick={() => move(w.id, 1)}  className="btn-ghost !p-1.5 text-muted hover:text-fg shrink-0" aria-label="Move down">↓</button>
+                <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+                  <input type="checkbox" checked={w.enabled} onChange={() => toggle(w.id)} className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium">{info.title}</div>
+                    <div className="text-[11.5px] text-muted mt-0.5 leading-snug">{info.description}</div>
+                  </div>
+                </label>
+                <button onClick={() => move(w.id, -1)} disabled={i === 0} className="btn-ghost !p-1.5 text-muted hover:text-fg disabled:opacity-30 shrink-0" aria-label="Move up">↑</button>
+                <button onClick={() => move(w.id, 1)}  disabled={i === sorted.length - 1} className="btn-ghost !p-1.5 text-muted hover:text-fg disabled:opacity-30 shrink-0" aria-label="Move down">↓</button>
               </div>
             )
           })}

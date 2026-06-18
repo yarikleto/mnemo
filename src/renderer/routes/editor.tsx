@@ -244,7 +244,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
 
           <div className="flex gap-2">
             <label className="flex items-center gap-2 flex-1">
-              <span className="eyebrow shrink-0">NS</span>
+              <span className="eyebrow shrink-0">Deck</span>
               <input
                 className="input-bare flex-1 font-mono text-[12.5px]"
                 placeholder="system-design/caching"

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MarkdownView } from './markdown-view'
+import { useModalA11y } from '../lib/use-modal-a11y'
 
 type Props = {
   prompts: string[]
@@ -11,6 +12,8 @@ type Props = {
 export function CardPreviewModal({ prompts, body, basePath, onClose }: Props) {
   const [idx, setIdx] = useState(0)
   const [revealed, setRevealed] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  useModalA11y(panelRef)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -35,12 +38,17 @@ export function CardPreviewModal({ prompts, body, basePath, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[760px] max-h-[88vh] flex flex-col animate-pop-in"
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="card-preview-modal-title"
+        className="bg-bg border border-border rounded-lg shadow-2xl w-full max-w-[760px] max-h-[88vh] flex flex-col animate-pop-in focus:outline-none"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">
           <div className="eyebrow flex items-center gap-3">
-            <span>Preview</span>
+            <span id="card-preview-modal-title">Preview</span>
             {prompts.length > 1 && (
               <>
                 <span className="text-border">·</span>

@@ -60,14 +60,14 @@ export function Sidebar() {
           <button
             onClick={() => setExportOpen(true)}
             title="Export cards to archive"
-            className="text-[11px] text-muted hover:text-fg px-1.5 py-0.5 rounded"
+            className="btn-ghost !px-2 !py-1 !text-[11px]"
           >
             Export
           </button>
           <button
             onClick={() => setImportOpen(true)}
             title="Import cards from archive"
-            className="text-[11px] text-muted hover:text-fg px-1.5 py-0.5 rounded"
+            className="btn-ghost !px-2 !py-1 !text-[11px]"
           >
             Import
           </button>

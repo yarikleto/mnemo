@@ -48,6 +48,19 @@ describe('parseCardFile', () => {
     expect(parsed.body.trim()).toBe('Answer')
   })
 
+  it('roundtrips a prompt whose body contains a bare --- line', () => {
+    const fm = {
+      id: CARD_ID,
+      prompts: [{ id: PROMPT_ID_A, text: 'before\n---\nafter' }],
+      tags: [],
+      created: '2026-04-23T10:00:00.000Z'
+    }
+    const raw = serializeCardFile(fm, 'Body\n')
+    const parsed = parseCardFile(raw)
+    expect(parsed.frontmatter).toEqual(fm)
+    expect(parsed.body.trim()).toBe('Body')
+  })
+
   it('throws on missing required fields', () => {
     const raw = `---\ntags: [x]\n---\nbody\n`
     expect(() => parseCardFile(raw)).toThrow()

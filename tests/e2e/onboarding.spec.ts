@@ -3,6 +3,11 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { launchApp, makeVaultDir, onboardedConfig } from './helpers'
 
+declare global {
+  var mnemoOpenedVaultPath: string | null
+  var mnemoOpenDialogCalls: number
+}
+
 test('fresh userData routes to /onboarding and starts with the app-data vault', async () => {
   const { app, userData, cleanup } = await launchApp()
   try {
@@ -41,18 +46,18 @@ test('Open Vault Folder menu command opens the current vault without changing ro
     seedVault: { rootPath: vault }
   })
   try {
-    await app.evaluate(({ shell, dialog }, { openedPath, pickedPath }) => {
-      ;(globalThis as any)[openedPath] = null
-      ;(globalThis as any).mnemoOpenDialogCalls = 0
+    await app.evaluate(({ shell, dialog }, pickedPath) => {
+      globalThis.mnemoOpenedVaultPath = null
+      globalThis.mnemoOpenDialogCalls = 0
       shell.openPath = async (target: string) => {
-        ;(globalThis as any)[openedPath] = target
+        globalThis.mnemoOpenedVaultPath = target
         return ''
       }
       dialog.showOpenDialog = async () => {
-        ;(globalThis as any).mnemoOpenDialogCalls += 1
+        globalThis.mnemoOpenDialogCalls += 1
         return { canceled: false, filePaths: [pickedPath] }
       }
-    }, { openedPath: 'mnemoOpenedVaultPath', pickedPath: otherVault })
+    }, otherVault)
 
     const win = await app.firstWindow()
     await win.waitForLoadState('domcontentloaded')
@@ -62,8 +67,8 @@ test('Open Vault Folder menu command opens the current vault without changing ro
       BrowserWindow.getAllWindows()[0]?.webContents.send('menu:open-vault-folder')
     })
 
-    await expect.poll(() => app.evaluate(() => (globalThis as any).mnemoOpenedVaultPath)).toBe(vault)
-    await expect.poll(() => app.evaluate(() => (globalThis as any).mnemoOpenDialogCalls)).toBe(0)
+    await expect.poll(() => app.evaluate(() => globalThis.mnemoOpenedVaultPath)).toBe(vault)
+    await expect.poll(() => app.evaluate(() => globalThis.mnemoOpenDialogCalls)).toBe(0)
 
     const disk = JSON.parse(readFileSync(path.join(userData, 'config.json'), 'utf8'))
     expect(disk.rootPath).toBe(vault)

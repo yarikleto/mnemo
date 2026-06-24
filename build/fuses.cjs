@@ -54,7 +54,13 @@ exports.default = async function setFuses(context) {
   await flipFuses(electronBinaryPath, {
     version: FuseVersion.V1,
     [FuseV1Options.RunAsNode]: false,
-    [FuseV1Options.EnableCookieEncryption]: true,
+    // Cookie encryption keeps its key in the macOS Keychain, so every unsigned
+    // (ad-hoc) launch triggers a login-password prompt — the ad-hoc identity is
+    // unstable, so "Always Allow" never sticks across rebuilds. Mnemo is a
+    // local-only app with no network and nothing sensitive in cookies, so gate
+    // this on signing too: off for unsigned (no prompt), on once a real signing
+    // identity gives the Keychain ACL something stable to bind to.
+    [FuseV1Options.EnableCookieEncryption]: isSignedBuild,
     [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
     [FuseV1Options.EnableNodeCliInspectArguments]: false,
     [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: isSignedBuild,

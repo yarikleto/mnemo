@@ -11,6 +11,7 @@ import { restoreWindowState, bindWindowStateSaver } from './window-state'
 import { configPath, defaultRootPath } from './paths'
 import log, { configureLog } from './log'
 
+app.setName('Mnemo')
 configureLog(app.getPath('userData'), app.isPackaged)
 
 // Local-first ethos: capture native crashes to userData/Crashpad/, never upload.
@@ -86,11 +87,12 @@ async function createWindow() {
   if (restore.fullscreen) win.setFullScreen(true)
   bindWindowStateSaver(win)
 
-  let config = await loadConfig(configPath(), defaultRootPath())
+  const userDataPath = app.getPath('userData')
+  let config = await loadConfig(configPath(userDataPath), defaultRootPath(userDataPath))
   const index = new CardIndex()
-  // When a fresh install hasn't picked a vault yet, rootPath is the empty
+  // When a fresh install hasn't completed onboarding yet, rootPath is the empty
   // sentinel — skip building the index and starting chokidar; the watcher
-  // and index get bootstrapped by completeOnboarding once a folder is chosen.
+  // and index get bootstrapped by completeOnboarding once the app-data vault is created.
   if (config.rootPath) await index.buildFrom(config.rootPath)
   const watcher = new Watcher(config.rootPath, index)
   if (config.rootPath) watcher.start()

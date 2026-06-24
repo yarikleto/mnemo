@@ -71,8 +71,8 @@ export interface Api {
     overwrite: boolean
   }): Promise<ApiResult<ImportSummary>>
 
-  pickVaultFolder(): Promise<ApiResult<{ path: string } | null>>
-  completeOnboarding(input: { rootPath: string }): Promise<ApiResult<Config>>
+  openVaultFolder(): Promise<ApiResult<void>>
+  completeOnboarding(): Promise<ApiResult<Config>>
   getDefaultVaultPath(): Promise<ApiResult<{ path: string }>>
   copyDiagnostics(): Promise<ApiResult<{ text: string }>>
   restartToInstall(): Promise<ApiResult<void>>

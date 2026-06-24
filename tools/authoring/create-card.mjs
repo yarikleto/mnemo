@@ -9,7 +9,7 @@
 //   create-card.mjs --help
 //
 // Options:
-//   --root <path>       Override mnemo root (default: read from config.json or ~/Documents/mnemo)
+//   --root <path>       Override mnemo root (default: read from config.json or app-data vault)
 //   --namespace <ns>    Folder under cards/ (e.g. "algorithms/graphs"). Required.
 //   --prompt <text>     Front-side prompt. Repeatable — each additional --prompt adds a
 //                       variant (same answer, different phrasing). At least one required.
@@ -126,11 +126,15 @@ async function discoverRoot() {
   // Prefer the live config.json written by Electron's app.getPath('userData').
   const candidates = []
   if (process.platform === 'darwin') {
+    candidates.push(path.join(os.homedir(), 'Library/Application Support/Mnemo/config.json'))
     candidates.push(path.join(os.homedir(), 'Library/Application Support/mnemo/config.json'))
   } else if (process.platform === 'win32') {
-    if (process.env.APPDATA) candidates.push(path.join(process.env.APPDATA, 'mnemo/config.json'))
+    const appData = process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming')
+    candidates.push(path.join(appData, 'Mnemo/config.json'))
+    candidates.push(path.join(appData, 'mnemo/config.json'))
   } else {
     const xdg = process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config')
+    candidates.push(path.join(xdg, 'Mnemo/config.json'))
     candidates.push(path.join(xdg, 'mnemo/config.json'))
   }
   for (const p of candidates) {
@@ -139,7 +143,17 @@ async function discoverRoot() {
       if (cfg.rootPath && typeof cfg.rootPath === 'string') return cfg.rootPath
     } catch { /* keep looking */ }
   }
-  return path.join(os.homedir(), 'Documents/mnemo')
+  return path.join(defaultUserDataDir(), 'vault')
+}
+
+function defaultUserDataDir() {
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Mnemo')
+  }
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming'), 'Mnemo')
+  }
+  return path.join(process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'), 'Mnemo')
 }
 
 // Crockford base32 ULID, matching src/main/id.ts.

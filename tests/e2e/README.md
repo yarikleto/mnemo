@@ -18,7 +18,7 @@ npx playwright test tests/e2e/onboarding.spec.ts   # single spec
 
 | Spec | TVC | What it asserts |
 | --- | --- | --- |
-| `onboarding.spec.ts` | TVC-B1, TVC-B2 | Fresh userData → `/onboarding`; "Use the default" → `/review`; cards/ + state/ created on disk. |
+| `onboarding.spec.ts` | TVC-B1, TVC-B2 | Fresh userData → `/onboarding`; app-data vault → `/review`; cards/ + state/ created on disk. |
 | `live-edit.spec.ts` | TVC-C2 | A card written directly into the vault by an external process appears in `/browse` within 1500 ms (chokidar live-sync). |
 | `window-state.spec.ts` | TVC-D1, TVC-D3 | Window bounds round-trip across quit + relaunch; `lastRoute` replay routes the user back to `/dashboard`. |
 | `offline.spec.ts` | TVC-F1 | With networking disabled, the review screen loads and a card can be rated end-to-end. |

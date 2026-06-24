@@ -129,26 +129,6 @@ export function SettingsRoute() {
       <section className="mb-10">
         {sectionHeading('Data folder')}
         <div className="card-surface p-4 font-mono text-[12px] text-muted break-all">{local.rootPath || '(no vault picked yet)'}</div>
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={async () => {
-              const ok = window.confirm(
-                'Switching vaults — Mnemo will not migrate your existing cards. ' +
-                'The new folder must be a vault you’ve already populated, or a new empty one.'
-              )
-              if (!ok) return
-              const r = await unwrap(window.api.pickVaultFolder())
-              if (!r) return
-              const cfg = await unwrap(window.api.completeOnboarding({ rootPath: r.path }))
-              setLocal(cfg); useAppStore.setState({ config: cfg })
-              await useAppStore.getState().refreshNamespaces()
-            }}
-            className="btn !py-1.5 !px-3 !text-[12px]"
-          >
-            Change vault…
-          </button>
-        </div>
       </section>
 
       <section className="mb-10">

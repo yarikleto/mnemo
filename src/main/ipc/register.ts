@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, app, dialog } from 'electron'
+import { ipcMain, BrowserWindow, app, shell } from 'electron'
 import { z } from 'zod'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -69,6 +69,7 @@ function namespacesFromIndex(index: CardIndex, dueCountsByNs: Map<string, number
 }
 
 export function registerIpc(ctx: Ctx): () => void {
+  const userDataPath = app.getPath('userData')
   const h = <T, A = void>(channel: string, schema: z.ZodType<A>, fn: (args: A) => Promise<T> | T) => {
     ipcMain.handle(channel, async (_e, raw) => {
       try {
@@ -217,7 +218,10 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('getConfig', VOID, async () => ctx.getConfig())
   h('updateConfig', z.record(z.any()), async (patch) => {
-    const next = await patchConfig(configPath(), ctx.getConfig(), patch as Partial<Config>)
+    if (Object.hasOwn(patch, 'rootPath')) {
+      throw new Error('Vault folder is managed by Mnemo and cannot be changed')
+    }
+    const next = await patchConfig(configPath(userDataPath), ctx.getConfig(), patch as Partial<Config>)
     ctx.setConfig(next)
     return next
   })
@@ -261,26 +265,23 @@ export function registerIpc(ctx: Ctx): () => void {
     )
   })
 
-  h('pickVaultFolder', VOID, async () => {
-    const result = await dialog.showOpenDialog(ctx.win, {
-      properties: ['openDirectory', 'createDirectory'],
-      title: 'Pick a vault folder'
-    })
-    if (result.canceled || result.filePaths.length === 0) return null
-    return { path: result.filePaths[0]! }
+  h('openVaultFolder', VOID, async () => {
+    const rootPath = ctx.getConfig().rootPath
+    if (!rootPath) throw new Error('No vault folder selected')
+    const message = await shell.openPath(rootPath)
+    if (message) throw new Error(`Could not open vault folder: ${message}`)
   })
 
-  h('getDefaultVaultPath', VOID, async () => ({ path: defaultRootPath() }))
+  h('getDefaultVaultPath', VOID, async () => ({ path: defaultRootPath(userDataPath) }))
 
-  h('completeOnboarding', z.object({
-    rootPath: z.string().min(1)
-  }), async (input) => {
-    if (!path.isAbsolute(input.rootPath)) {
+  h('completeOnboarding', VOID, async () => {
+    const rootPath = defaultRootPath(userDataPath)
+    if (!path.isAbsolute(rootPath)) {
       throw new Error('Vault path must be absolute')
     }
     // Probe writability with a temp file before committing the choice.
-    await fs.mkdir(input.rootPath, { recursive: true })
-    const probe = path.join(input.rootPath, `.mnemo-write-probe-${Date.now()}`)
+    await fs.mkdir(rootPath, { recursive: true })
+    const probe = path.join(rootPath, `.mnemo-write-probe-${Date.now()}`)
     try {
       await fs.writeFile(probe, '')
     } catch (e) {
@@ -288,11 +289,11 @@ export function registerIpc(ctx: Ctx): () => void {
     } finally {
       await fs.rm(probe, { force: true })
     }
-    await fs.mkdir(path.join(input.rootPath, 'cards'), { recursive: true })
-    await fs.mkdir(path.join(input.rootPath, 'state'), { recursive: true })
+    await fs.mkdir(path.join(rootPath, 'cards'), { recursive: true })
+    await fs.mkdir(path.join(rootPath, 'state'), { recursive: true })
 
-    const next = await patchConfig(configPath(), ctx.getConfig(), {
-      rootPath: input.rootPath,
+    const next = await patchConfig(configPath(userDataPath), ctx.getConfig(), {
+      rootPath,
       onboardedAt: new Date().toISOString()
     })
     ctx.setConfig(next)
@@ -345,7 +346,7 @@ export function registerIpc(ctx: Ctx): () => void {
       'moveCard','deleteCard','deleteNamespace','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
       'searchCards','rescan','getDashboardData',
       'exportCards','pickImportFile','importArchive',
-      'pickVaultFolder','completeOnboarding','getDefaultVaultPath','copyDiagnostics'
+      'openVaultFolder','completeOnboarding','getDefaultVaultPath','copyDiagnostics'
     ]) ipcMain.removeHandler(ch)
   }
 }

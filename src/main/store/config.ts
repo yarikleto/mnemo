@@ -9,9 +9,8 @@ export async function loadConfig(configFile: string, _fallbackRootPath: string):
     const parsed = ConfigSchema.parse(JSON.parse(raw))
     return await migrateConfigIfNeeded(configFile, parsed)
   } catch {
-    // Fresh install — no auto-mkdir of subdirs. The default vault path is a
-    // suggestion surfaced to the user in the onboarding screen, never silently
-    // committed. rootPath stays the empty sentinel until completeOnboarding fires.
+    // Fresh install — no auto-mkdir of subdirs. rootPath stays the empty
+    // sentinel until completeOnboarding creates the managed app-data vault.
     const cfg: Config = { rootPath: '', ...DEFAULT_CONFIG }
     await atomicWrite(configFile, JSON.stringify(cfg, null, 2))
     return cfg

@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { _electron as electron } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { launchApp, makeVaultDir, onboardedConfig } from './helpers'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_ENTRY = path.resolve(__dirname, '../../dist-electron/main/index.js')
 
 test('window-state.json restores bounds across launches', async () => {
@@ -40,9 +43,13 @@ test('lastRoute restore: navigating to /dashboard, quitting, relaunching lands o
   try {
     const win = await app.firstWindow()
     await win.waitForLoadState('domcontentloaded')
-    await win.evaluate(() => { location.hash = '/dashboard' })
-    // Allow the LastRouteRecorder debounce (250 ms) + IPC roundtrip.
-    await win.waitForTimeout(700)
+    await expect.poll(() => win.evaluate(() => location.hash)).toBe('#/review')
+    await win.evaluate(() => { location.hash = '#/dashboard' })
+    await expect.poll(() => win.evaluate(() => location.hash)).toBe('#/dashboard')
+    await expect.poll(() => {
+      const cfg = JSON.parse(readFileSync(path.join(userData, 'config.json'), 'utf8'))
+      return cfg.lastRoute
+    }).toBe('/dashboard')
     await app.close()
 
     const app2 = await electron.launch({ args: [MAIN_ENTRY, `--user-data-dir=${userData}`] })

@@ -114,7 +114,7 @@ function RoutedView() {
   return (
     <div key={animKey} className="h-full animate-fade-in-up">
       <Routes location={location}>
-        <Route path="/"           element={<Navigate to="/review" />} />
+        <Route path="/"           element={<HomeRedirect />} />
         <Route path="/onboarding" element={<OnboardingRoute />} />
         <Route path="/review"     element={<ReviewRoute />} />
         <Route path="/browse"     element={<BrowseRoute />} />
@@ -126,6 +126,15 @@ function RoutedView() {
       </Routes>
     </div>
   )
+}
+
+function HomeRedirect() {
+  const config = useAppStore(s => s.config)
+  const lastRoute = config?.lastRoute
+  const target = config?.onboardedAt && config.rootPath && lastRoute && lastRoute !== '/onboarding'
+    ? lastRoute
+    : '/review'
+  return <Navigate to={target} />
 }
 
 function MenuRouter() {
@@ -154,12 +163,7 @@ function MenuRouter() {
           window.dispatchEvent(new CustomEvent('mnemo:open-export'))
           return
         case 'open-vault-folder': {
-          const r = await unwrap(window.api.pickVaultFolder())
-          if (!r) return
-          const cfg = await unwrap(window.api.completeOnboarding({ rootPath: r.path }))
-          useAppStore.setState({ config: cfg })
-          await useAppStore.getState().refreshNamespaces()
-          navigate('/review', { replace: true })
+          try { await unwrap(window.api.openVaultFolder()) } catch {}
           return
         }
         case 'copy-diagnostics': {

@@ -2,7 +2,9 @@ import { _electron as electron, type ElectronApplication } from '@playwright/tes
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN_ENTRY = path.resolve(__dirname, '../../dist-electron/main/index.js')
 
 /**

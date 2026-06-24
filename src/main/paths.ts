@@ -1,12 +1,11 @@
 import path from 'node:path'
-import { app } from 'electron'
 
-export function defaultRootPath(): string {
-  return path.join(app.getPath('documents'), 'mnemo')
+export function defaultRootPath(userDataPath: string): string {
+  return path.join(userDataPath, 'vault')
 }
 
-export function configPath(): string {
-  return path.join(app.getPath('userData'), 'config.json')
+export function configPath(userDataPath: string): string {
+  return path.join(userDataPath, 'config.json')
 }
 
 export function cardsDir(rootPath: string): string {

@@ -86,7 +86,7 @@ npm install
 npm run dev
 ```
 
-On first launch, the welcome screen lets you choose where to keep your cards (defaults to `~/Documents/mnemo`). You can change this later in **Settings → Data folder**.
+On first launch, Mnemo stores cards in the OS-managed app data folder: `~/Library/Application Support/Mnemo/vault` on macOS, `%APPDATA%/Mnemo/vault` on Windows, or `~/.config/Mnemo/vault` on Linux.
 
 ## Card format
 

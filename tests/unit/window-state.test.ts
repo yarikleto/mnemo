@@ -1,4 +1,19 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('electron', () => ({
+  app: {
+    getPath: () => '/tmp/mnemo-test',
+    on: () => undefined,
+    off: () => undefined
+  },
+  screen: {
+    getAllDisplays: () => [],
+    getPrimaryDisplay: () => ({ id: 1 }),
+    getDisplayMatching: () => ({ id: 1 })
+  },
+  BrowserWindow: class {}
+}))
+
 import { clampToGeometry, type DesktopGeometry, type WindowState } from '../../src/main/window-state'
 
 const primary = { id: 1, workArea: { x: 0, y: 0, width: 1920, height: 1080 } }

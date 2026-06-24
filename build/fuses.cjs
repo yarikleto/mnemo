@@ -7,7 +7,22 @@
 'use strict'
 
 const { flipFuses, FuseV1Options, FuseVersion } = require('@electron/fuses')
+const { spawnSync } = require('child_process')
 const path = require('path')
+
+const SIGNING_XATTRS = [
+  'com.apple.FinderInfo',
+  'com.apple.ResourceFork',
+  'com.apple.fileprovider.fpfs#P',
+  'com.apple.provenance'
+]
+
+function clearMacSigningXattrs(rootPath) {
+  spawnSync('xattr', ['-cr', rootPath], { stdio: 'ignore' })
+  for (const attr of SIGNING_XATTRS) {
+    spawnSync('xattr', ['-dr', attr, rootPath], { stdio: 'ignore' })
+  }
+}
 
 exports.default = async function setFuses(context) {
   const { electronPlatformName, appOutDir, packager } = context
@@ -21,6 +36,12 @@ exports.default = async function setFuses(context) {
       ? path.join(appOutDir, `${productFilename}${ext}`)
       : path.join(appOutDir, productFilename.toLowerCase().replace(/\s+/g, '-'))
 
+  if (electronPlatformName === 'darwin') {
+    // Extended attributes can be copied from downloaded dependencies into the
+    // bundle and cause ad-hoc codesign to reject nested helper binaries.
+    clearMacSigningXattrs(electronBinaryPath)
+  }
+
   console.log(`[fuses] flipping fuses on ${electronBinaryPath}`)
   await flipFuses(electronBinaryPath, {
     version: FuseVersion.V1,
@@ -32,10 +53,10 @@ exports.default = async function setFuses(context) {
     [FuseV1Options.OnlyLoadAppFromAsar]: true,
     [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: false,
     [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
-    // resetAdHocDarwinSignature is required on darwin because flipping fuses
-    // invalidates the existing signature — electron-builder will re-sign on
-    // its next pass anyway.
-    resetAdHocDarwinSignature: electronPlatformName === 'darwin'
+    // electron-builder signs macOS bundles after this hook. Let that final
+    // signing pass handle the modified binary; the intermediate ad-hoc reset
+    // can fail on CI/workspaces that attach FinderInfo or File Provider xattrs.
+    resetAdHocDarwinSignature: false
   })
   console.log('[fuses] done')
 }

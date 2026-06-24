@@ -1,73 +1,140 @@
 name: release
 
-# Fires on every v* tag push (the canonical release trigger) and is also
-# manually dispatchable from the Actions UI for re-runs / hotfixes.
 on:
   push:
-    tags: ['v*']
+    branches: ['main']
+    paths:
+      - package.json
   workflow_dispatch:
 
-# electron-builder publishes the artifacts into a draft GitHub Release using
-# the auto-injected GITHUB_TOKEN. The release stays in draft until the
-# maintainer reviews artifacts and flips it published; that's the moment the
-# auto-updater starts seeing the new version.
 permissions:
   contents: write
 
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-14
-            target: mac
-          - os: windows-latest
-            target: win
-          - os: ubuntu-24.04
-            target: linux
-    runs-on: ${{ matrix.os }}
+  release-macos-arm64:
+    name: Release macOS Apple Silicon
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
+      - name: Check package version
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          previous_version=""
+
+          if [ "${EVENT_NAME}" = "push" ] \
+            && [ -n "${BEFORE_SHA:-}" ] \
+            && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "${BEFORE_SHA}:package.json" 2>/dev/null; then
+            previous_version="$(
+              git show "${BEFORE_SHA}:package.json" |
+              node -e "let input = ''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => console.log(JSON.parse(input).version || ''));"
+            )"
+          fi
+
+          should_release="true"
+          if [ "${EVENT_NAME}" = "push" ] && [ "${previous_version}" = "${version}" ]; then
+            should_release="false"
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            should_release="false"
+          fi
+
+          previous_tag="$(git tag --list 'v*' --sort=-v:refname | grep -v "^${tag}$" | head -n 1 || true)"
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "previous_version=${previous_version}" >> "${GITHUB_OUTPUT}"
+          echo "previous_tag=${previous_tag}" >> "${GITHUB_OUTPUT}"
+          echo "should_release=${should_release}" >> "${GITHUB_OUTPUT}"
+
+          if [ "${should_release}" = "true" ]; then
+            echo "Preparing release ${tag}"
+          else
+            echo "No release needed for package version ${version}"
+          fi
+
       - name: Install dependencies
+        if: steps.version.outputs.should_release == 'true'
         run: npm ci
 
       - name: Typecheck + unit tests
+        if: steps.version.outputs.should_release == 'true'
         run: |
           npm run typecheck
           npm run test
 
       - name: Build
+        if: steps.version.outputs.should_release == 'true'
         run: npm run build
 
-      - name: Package + publish (macOS — signed + notarized)
-        if: matrix.target == 'mac'
+      - name: Package macOS arm64
+        if: steps.version.outputs.should_release == 'true'
         env:
-          # Developer ID cert .p12 base64 + password, supplied via repo secrets
-          # set up in TASK-003.
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          # Apple notary service creds — afterSign/notarize.cjs reads these.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac --publish always
+        run: npx electron-builder --mac dmg:arm64 zip:arm64 --publish never
 
-      - name: Package + publish (Windows — unsigned NSIS)
-        if: matrix.target == 'win'
+      - name: Create GitHub release
+        if: steps.version.outputs.should_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish always
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PREVIOUS_TAG: ${{ steps.version.outputs.previous_tag }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
 
-      - name: Package + publish (Linux — AppImage + .deb)
-        if: matrix.target == 'linux'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --linux --publish always
+          assets=(
+            out/*arm64*.dmg
+            out/*arm64*.zip
+            out/*arm64*.blockmap
+          )
+          if [ -f out/latest-mac.yml ]; then
+            assets+=(out/latest-mac.yml)
+          fi
+
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets found in out/" >&2
+            exit 1
+          fi
+
+          args=(
+            release create "${TAG}"
+            "${assets[@]}"
+            --target "${GITHUB_SHA}"
+            --title "${TAG}"
+            --generate-notes
+            --latest
+          )
+
+          if [ -n "${PREVIOUS_TAG}" ]; then
+            args+=(--notes-start-tag "${PREVIOUS_TAG}")
+          fi
+
+          gh "${args[@]}"

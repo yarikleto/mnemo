@@ -15,6 +15,7 @@
     "e2e": "playwright test",
     "dist": "npm run build && electron-builder --publish never",
     "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:mac:arm64": "npm run build && electron-builder --mac dmg:arm64 zip:arm64 --publish never",
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:linux": "npm run build && electron-builder --linux --publish never"
   },

@@ -167,10 +167,15 @@ Packaging is handled by [electron-builder](https://www.electron.build/). Per-pla
 |---|---|---|
 | `npm run dist` | Auto-detected (current OS) | — |
 | `npm run dist:mac` | macOS | `.dmg`, `.zip` |
+| `npm run dist:mac:arm64` | macOS Apple Silicon | arm64 `.dmg`, arm64 `.zip` |
 | `npm run dist:win` | Windows | NSIS installer (`.exe`) |
 | `npm run dist:linux` | Linux | `AppImage`, `.deb` |
 
 Artifacts land in `out/`. The first run downloads the Electron binaries for the target platform and may take a few minutes.
+
+### GitHub CI
+
+`.github/workflows/release.yml` creates a GitHub Release whenever `package.json`'s `version` changes on `main`. It runs on GitHub's `macos-15` arm64 runner, packages with `electron-builder --mac dmg:arm64 zip:arm64 --publish never`, creates a `vX.Y.Z` tag/release with generated change notes, and attaches the generated arm64 `.dmg` / `.zip` files.
 
 ### Cross-building
 

@@ -1,221 +1,264 @@
 <p align="center">
-  <img src="./assets/logo.svg" alt="Mnemo" width="128" height="128"/>
+  <img src="./assets/logo.svg" alt="Mnemo" width="120" height="120"/>
 </p>
 
 <h1 align="center">Mnemo</h1>
 
 <p align="center">
-  A local-first spaced-repetition app for anything you want to memorise — languages, algorithms, medicine, trivia, whatever.<br/>
-  Cards are plain markdown files you own: edit in any editor, track in git.<br/>
-  Scheduling uses <a href="https://github.com/open-spaced-repetition/ts-fsrs">FSRS</a>.
+  <strong>Local-first spaced repetition for cards you actually own.</strong><br/>
+  Write cards in Markdown, organize them with folders, review with FSRS, and sync or back them up like normal files.
 </p>
 
 <p align="center">
-  <img src="./assets/screenshots/review-revealed.png" alt="Review with answer revealed" width="860"/>
+  <a href="https://github.com/yarikleto/mnemo/releases">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/yarikleto/mnemo?label=download&color=C17B40"/>
+  </a>
+  <a href="https://github.com/yarikleto/mnemo/actions/workflows/build.yml">
+    <img alt="Build status" src="https://github.com/yarikleto/mnemo/actions/workflows/build.yml/badge.svg"/>
+  </a>
+  <img alt="Local first" src="https://img.shields.io/badge/local--first-Markdown%20vault-C17B40"/>
+  <img alt="Scheduling" src="https://img.shields.io/badge/scheduling-FSRS-2F2C28"/>
 </p>
 
 <p align="center">
-  <img src="./assets/screenshots/card-view.png" alt="Read-mode card viewer with explicit Edit affordance" width="860"/>
+  <a href="https://github.com/yarikleto/mnemo/releases"><strong>Download Mnemo</strong></a>
+  &nbsp;·&nbsp;
+  <a href="#screenshots">Screenshots</a>
+  &nbsp;·&nbsp;
+  <a href="#card-format">Card format</a>
+  &nbsp;·&nbsp;
+  <a href="#development">Development</a>
 </p>
 
 <p align="center">
-  <img src="./assets/screenshots/browse.png" alt="Browse all cards" width="860"/>
+  <img src="./assets/screenshots/review-revealed.png" alt="Mnemo review screen with the answer revealed and FSRS rating buttons" width="920"/>
 </p>
 
-<p align="center">
-  <img src="./assets/screenshots/dashboard.png" alt="Dashboard with due forecast and namespace ranking" width="860"/>
-</p>
+## Why Mnemo
 
-<p align="center">
-  <img src="./assets/screenshots/editor.png" alt="Card editor with live markdown preview" width="860"/>
-</p>
+Mnemo is built for people who want spaced repetition without surrendering their study material to a service. Your cards live in a plain folder, each card is a Markdown file, and review state is stored separately so the notes stay readable and git-friendly.
 
-## Features
+| What you get | Why it matters |
+|---|---|
+| Markdown cards | Use prose, lists, code blocks, links, and images without a proprietary format. |
+| Folder-based decks | The filesystem is the source of truth; folders become namespaces in the app. |
+| FSRS scheduling | Reviews are scheduled with the modern Free Spaced Repetition Scheduler via `ts-fsrs`. |
+| Live file watcher | Edit cards in Mnemo or in your editor; changes appear in the app automatically. |
+| Portable archives | Export selected cards to `.mnemo.zip` and import them on another machine. |
+| Local data | No account, no hosted database, no cloud lock-in. |
 
-- Plain-markdown cards with YAML front-matter
-- Folder layout defines the namespace — whole decks can be deleted from the sidebar
-- FSRS scheduling with configurable retention and maximum interval
-- Live file watcher — edit cards in any editor, the app updates instantly
-- Full-text search across prompts and bodies
-- Read-mode card viewer with an explicit Edit affordance — separates recall from authoring
-- Configurable dashboard with per-widget titles and descriptions (due forecast, leech list, heatmap, streaks, namespace ranking, key stats)
-- Share cards between machines via a portable `.mnemo.zip` archive (export with search + multi-select, import with preview, target namespace, and skip/overwrite)
-- Dark, light, and system themes
-- Cross-platform packaging for macOS, Windows, and Linux
+## Screenshots
 
-## Installation
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./assets/screenshots/review.png" alt="Review screen before answer reveal"/>
+      <br/>
+      <sub><strong>Review</strong> - focused recall, keyboard shortcuts, deck filters, and queue progress.</sub>
+    </td>
+    <td width="50%">
+      <img src="./assets/screenshots/browse.png" alt="Browse all cards"/>
+      <br/>
+      <sub><strong>Browse</strong> - search prompts and tags across every Markdown-backed card.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./assets/screenshots/card-view.png" alt="Read-mode card viewer"/>
+      <br/>
+      <sub><strong>Read cards</strong> - inspect prompts and answers without dropping into edit mode.</sub>
+    </td>
+    <td width="50%">
+      <img src="./assets/screenshots/editor.png" alt="Card editor with live Markdown preview"/>
+      <br/>
+      <sub><strong>Edit</strong> - prompt variants, tags, namespaces, Markdown editing, and live preview.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./assets/screenshots/dashboard.png" alt="Dashboard with due forecast, weak decks, leech list, heatmap, activity streak, and library stats"/>
+      <br/>
+      <sub><strong>Dashboard</strong> - due forecast, weak decks, leeches, retention heatmap, streaks, and stats.</sub>
+    </td>
+    <td width="50%">
+      <img src="./assets/screenshots/export.png" alt="Export dialog with selected cards"/>
+      <br/>
+      <sub><strong>Share</strong> - select cards or whole namespaces and export a portable archive.</sub>
+    </td>
+  </tr>
+</table>
 
-Mnemo ships as a single download per platform from [GitHub Releases](https://github.com/yarikleto/mnemo/releases).
+## Install
 
-### macOS
+Download the newest build for your platform from [GitHub Releases](https://github.com/yarikleto/mnemo/releases).
 
-Download the latest `.dmg`, double-click, drag Mnemo into Applications. On first launch Gatekeeper will say:
+| Platform | What to download | Notes |
+|---|---|---|
+| macOS | `.dmg` | Drag Mnemo into Applications. |
+| Windows | `Mnemo-Setup-X.Y.Z.exe` | Run the installer. |
+| Linux | `.AppImage` or `.deb` | Use the portable AppImage or install the Debian package. |
 
-> *"Mnemo cannot be opened because Apple cannot check it for malicious software."*
+<details>
+<summary><strong>Unsigned app warnings</strong></summary>
 
-Right-click the app in Applications → **Open** → confirm in the dialog that appears. macOS remembers the choice for future launches. The v1 builds are unsigned by design — Mnemo is a single-maintainer side project, and a $99/yr Apple Developer enrollment buys nothing the user actually wants. If signed builds ever land, they'll be a fast-follow.
+The current builds are unsigned. Mnemo is a small single-maintainer project, so macOS Gatekeeper and Windows SmartScreen may warn on first launch.
 
-### Windows
+- macOS: right-click Mnemo in Applications, choose **Open**, then confirm. macOS remembers this choice.
+- Windows: choose **More info** and then **Run anyway** in the SmartScreen dialog.
 
-Download `Mnemo-Setup-X.Y.Z.exe`. The first launch will trip SmartScreen ("Windows protected your PC") because the v1 installer is **unsigned** — click **More info → Run anyway**. Signed Windows builds are a v1.x fast-follow once a few Windows users surface; until then the warning is the cost of admission.
+</details>
 
-### Linux
+<details>
+<summary><strong>Linux commands</strong></summary>
+
+For AppImage:
 
 ```bash
 chmod +x Mnemo-X.Y.Z.AppImage
 ./Mnemo-X.Y.Z.AppImage
 ```
 
-Some desktop environments will offer to integrate the AppImage into the launcher — accept if you want a menu entry. For Debian / Ubuntu users a `.deb` is also published:
+For Debian or Ubuntu:
 
 ```bash
 sudo dpkg -i mnemo_X.Y.Z_amd64.deb
 ```
 
-### Updates
+</details>
 
-- **macOS, Linux (AppImage)** — Mnemo checks for new versions in the background and shows a "Restart to apply" banner when one is ready.
-- **Linux (.deb), Windows** — manual download from GitHub Releases. (Auto-update on these targets needs a signed publisher, which v1 doesn't have.)
+## First Run
 
-You can switch the auto-update off entirely from **Settings → Updates**; Mnemo will stop checking for new versions and you'll need to download updates manually.
+On first launch, Mnemo creates a managed vault in the OS-standard app data folder:
 
-## Getting started
+| Platform | Default vault |
+|---|---|
+| macOS | `~/Library/Application Support/Mnemo/vault` |
+| Windows | `%APPDATA%/Mnemo/vault` |
+| Linux | `~/.config/Mnemo/vault` |
 
-```bash
-npm install
-npm run dev
+Inside that vault:
+
+```text
+vault/
+  cards/      # your Markdown cards
+  state/      # Mnemo review state
 ```
 
-On first launch, Mnemo stores cards in the OS-managed app data folder: `~/Library/Application Support/Mnemo/vault` on macOS, `%APPDATA%/Mnemo/vault` on Windows, or `~/.config/Mnemo/vault` on Linux.
+Back up the vault like any other notes folder. If you use Git, Syncthing, Dropbox, iCloud Drive, or another file sync tool, Mnemo does not get in your way.
 
-## Card format
+## Card Format
+
+Each card is a `.md` file with YAML front matter and a Markdown answer body.
 
 ```markdown
 ---
 id: 01HXYZABC...
 prompts:
   - id: 01HXYZPROMPT1...
-    text: 'What does **常識** (jōshiki) mean?'
+    text: 'What problem does consistent hashing solve?'
   - id: 01HXYZPROMPT2...
-    text: 'Give a sentence using 常識.'
-tags: [japanese, vocab]
+    text: 'Why does adding one cache node not reshuffle every key?'
+tags: [systems, caching]
 created: 2026-01-15T10:23:00.000Z
 ---
 
-Free-form markdown. Explanations, code, diagrams — whatever helps you remember.
+Consistent hashing maps both cache nodes and keys onto the same ring.
+When one node joins or leaves, only the neighboring slice of keys moves.
 ```
 
 | Field | Meaning |
 |---|---|
-| `id` | ULID, auto-generated. The scheduler keys review state off this. |
-| `prompts` | One or more question variants. Each has its own ULID so the scheduler can keep edits stable across renames. During review, one prompt is picked at random. |
-| `tags` | Free-form, used for filtering and search. |
-| `created` | ISO 8601 timestamp. |
+| `id` | Card ULID, generated by Mnemo. Review state is keyed by this ID. |
+| `prompts` | One or more question variants. Mnemo picks one during review. |
+| `tags` | Free-form labels for search, filtering, and organization. |
+| `created` | ISO 8601 creation timestamp. |
 
-The body below the front-matter is the shared answer, shown after you reveal — same for every prompt on the card.
-
-Review state (stability, difficulty, due date, history) lives in a separate `state/` directory next to your cards, so your markdown stays clean and diff-friendly.
+The answer body below the front matter is shared by every prompt on the card. Review state lives in `state/<id>.json`, not in the Markdown file, so your notes stay clean.
 
 ## Namespaces
 
-The folder a card lives in is its namespace.
+The folder path under `cards/` becomes the card namespace.
 
-```
+```text
 vault/
   cards/
     languages/
-      japanese/vocab.md         → languages/japanese
-      spanish/verbs.md          → languages/spanish
+      japanese/vocab.md         -> languages/japanese
+      spanish/verbs.md          -> languages/spanish
     algorithms/
-      graphs/dijkstra.md        → algorithms/graphs
-    medicine/
-      anatomy/heart.md          → medicine/anatomy
+      graphs/dijkstra.md        -> algorithms/graphs
+    systems/
+      caching/consistent.md     -> systems/caching
 ```
 
-The sidebar tree, namespace ranking widget, and review filters all derive from this layout. Hover a deck in the sidebar to delete it — the app removes the namespace folder, every card under it, and the matching review state atomically.
+Namespaces power the sidebar, deck filters, dashboard ranking, and archive export. Deleting a namespace removes the folder, every card under it, and the matching review state.
 
-## Sharing cards
+## Sharing Cards
 
-Cards are portable. To hand some off to another machine or another person:
+Mnemo archives contain cards and referenced assets, not review progress. That means you can share study material without copying someone else's memory state.
 
-1. **Export** — open the sidebar → Export, search and multi-select cards (tri-state namespace checkboxes let you grab whole decks at once), pick a destination. You get a single `.mnemo.zip` containing every selected card plus any assets they reference.
-2. **Import** on the other side — Sidebar → Import, pick the archive, preview the card count, choose a target namespace (defaults to `imported`), and decide whether to skip or overwrite cards whose IDs already exist.
+1. Open **Export** from the sidebar.
+2. Search, select cards, or select whole namespaces.
+3. Save the `.mnemo.zip` archive.
+4. On another machine, choose **Import**, preview the archive, pick a target namespace, and skip or overwrite existing card IDs.
 
-<p align="center">
-  <img src="./assets/screenshots/export.png" alt="Export dialog with tri-state namespace checkboxes" width="720"/>
-</p>
+## Updates
 
-Review state (stability, difficulty, due date) is **not** shared — archives carry cards and assets only. Progress stays local to each machine.
+- macOS and Linux AppImage builds can check for updates in the background and show a restart banner when an update is ready.
+- Windows and Linux `.deb` builds are updated manually from [GitHub Releases](https://github.com/yarikleto/mnemo/releases).
+- Auto-update checks can be disabled in **Settings -> Updates**.
 
-## Scripts
+## Development
+
+Mnemo is an Electron app with a React renderer, a strict preload boundary, and a local main-process store for disk I/O, indexing, file watching, archives, and FSRS scheduling.
+
+```bash
+npm install
+npm run dev
+```
 
 | Command | Description |
 |---|---|
 | `npm run dev` | Vite + Electron with hot reload |
-| `npm run build` | Typecheck and build |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run build` | Typecheck and build renderer, main, and preload bundles |
+| `npm run typecheck` | TypeScript only |
 | `npm run test` | Vitest unit tests |
-| `npm run e2e` | Playwright end-to-end |
+| `npm run e2e` | Playwright end-to-end tests |
+| `npm run dist` | Build an installer for the current platform |
 
-See [Building for release](#building-for-release) for packaging commands.
+```text
+src/
+  main/       Electron main process: disk I/O, FSRS, IPC, file watcher
+  preload/    Context-bridge API exposed to the renderer
+  renderer/   React UI: routes, widgets, stores
+  shared/     Zod schemas, constants, and API types
+```
 
-## Building for release
+## Building Releases
 
 Packaging is handled by [electron-builder](https://www.electron.build/). Per-platform targets are declared in `electron-builder.yml`.
 
 | Command | Platform | Artifacts |
 |---|---|---|
-| `npm run dist` | Auto-detected (current OS) | — |
+| `npm run dist` | Current OS | Platform default |
 | `npm run dist:mac` | macOS | `.dmg`, `.zip` |
 | `npm run dist:mac:arm64` | macOS Apple Silicon | arm64 `.dmg`, arm64 `.zip` |
 | `npm run dist:win` | Windows | NSIS installer (`.exe`) |
 | `npm run dist:linux` | Linux | `AppImage`, `.deb` |
 
-Artifacts land in `out/`. The first run downloads the Electron binaries for the target platform and may take a few minutes.
+Artifacts land in `out/`. The first packaging run downloads Electron binaries and can take a few minutes.
 
-### GitHub CI
+### CI
 
-`.github/workflows/build.yml` runs on pushes, pull requests, and manual dispatches. Pull requests run the typecheck + unit-test gate only; pushes to `main` and manual runs also package macOS, Windows, and Linux installers and upload them as workflow artifacts.
+`.github/workflows/build.yml` runs typecheck and tests, and packages installers on pushes to `main` or manual runs.
 
-`.github/workflows/release.yml` is manual-only. Run it from GitHub Actions with a `version` input matching `package.json`; it builds macOS, Windows, and Linux on native runners and publishes `vX.Y.Z` to GitHub Releases through `electron-builder`. The optional `platform` input defaults to `all` and can republish one platform if a release job needs to be retried.
+`.github/workflows/release.yml` is manual-only. Run it with a `version` input matching `package.json`; it builds platform installers and publishes `vX.Y.Z` to GitHub Releases.
 
-### Cross-building
+### Code Signing
 
-Each installer format needs its target OS — either natively or emulated:
+Unsigned builds run locally, but operating systems warn users. To sign releases:
 
-- **`.dmg`** — build on macOS only. Apple's tooling isn't available elsewhere.
-- **Windows `.exe`** — build on Windows, or on macOS/Linux with [Wine](https://www.winehq.org/) installed.
-- **Linux `AppImage` / `.deb`** — build on any OS.
+- macOS: set `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`.
+- Windows: set `CSC_LINK` and `CSC_KEY_PASSWORD`.
 
-### Code signing (optional)
-
-Unsigned builds run fine locally, but users will see OS warnings. For distribution:
-
-- **macOS** — export your Developer ID certificate as a `.p12`, then set `CSC_LINK` (path or base64) and `CSC_KEY_PASSWORD` before `npm run dist:mac`. For notarisation, also set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`.
-- **Windows** — set `CSC_LINK` + `CSC_KEY_PASSWORD` with your code-signing certificate.
-
-Full details: [electron-builder signing docs](https://www.electron.build/code-signing).
-
-### App icon
-
-The Mnemo logo lives at `assets/logo.svg`. To produce platform icons (`.icns` for macOS, `.ico` for Windows, `.png` set for Linux), rasterise the SVG to a 1024×1024 PNG and drop it at `build/icon.png` — electron-builder will generate the rest automatically on `npm run dist`.
-
-## Project structure
-
-```
-src/
-├── main/       Electron main process — disk I/O, FSRS, IPC, file watcher
-├── preload/    Context-bridge API exposed to the renderer
-├── renderer/   React UI (routes, widgets, stores)
-└── shared/     Zod schemas and types used by both sides
-```
-
-## Data
-
-- **Cards and review state** live under the vault folder you picked — back them up like any other notes.
-- **App config** is stored in the OS-standard app-data directory:
-  - macOS — `~/Library/Application Support/Mnemo/`
-  - Windows — `%APPDATA%/Mnemo/`
-  - Linux — `~/.config/Mnemo/`
-
-All writes are atomic (temp file + rename), so a crash mid-write won't corrupt state.
+See the [electron-builder code signing docs](https://www.electron.build/code-signing) for full details.

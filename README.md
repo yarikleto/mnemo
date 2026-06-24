@@ -175,7 +175,9 @@ Artifacts land in `out/`. The first run downloads the Electron binaries for the 
 
 ### GitHub CI
 
-`.github/workflows/release.yml` creates a GitHub Release whenever `package.json`'s `version` changes on `main`. It runs on GitHub's `macos-15` arm64 runner, packages with `electron-builder --mac dmg:arm64 zip:arm64 --publish never`, creates a `vX.Y.Z` tag/release with generated change notes, and attaches the generated arm64 `.dmg` / `.zip` files.
+`.github/workflows/build.yml` runs on pushes, pull requests, and manual dispatches. Pull requests run the typecheck + unit-test gate only; pushes to `main` and manual runs also package macOS, Windows, and Linux installers and upload them as workflow artifacts.
+
+`.github/workflows/release.yml` is manual-only. Run it from GitHub Actions with a `version` input matching `package.json`; it builds macOS, Windows, and Linux on native runners and publishes `vX.Y.Z` to GitHub Releases through `electron-builder`.
 
 ### Cross-building
 

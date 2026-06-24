@@ -24,7 +24,7 @@ publish:
   provider: github
   owner: yarikleto
   repo: mnemo
-  releaseType: draft
+  releaseType: release
 
 mac:
   category: public.app-category.education

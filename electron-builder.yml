@@ -57,6 +57,7 @@ win:
 linux:
   icon: assets/icon.png
   category: Education
+  maintainer: yarikleto <alfimois@gmail.com>
   target:
     - target: AppImage
       arch: [x64]

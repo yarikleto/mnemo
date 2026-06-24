@@ -177,7 +177,7 @@ Artifacts land in `out/`. The first run downloads the Electron binaries for the 
 
 `.github/workflows/build.yml` runs on pushes, pull requests, and manual dispatches. Pull requests run the typecheck + unit-test gate only; pushes to `main` and manual runs also package macOS, Windows, and Linux installers and upload them as workflow artifacts.
 
-`.github/workflows/release.yml` is manual-only. Run it from GitHub Actions with a `version` input matching `package.json`; it builds macOS, Windows, and Linux on native runners and publishes `vX.Y.Z` to GitHub Releases through `electron-builder`.
+`.github/workflows/release.yml` is manual-only. Run it from GitHub Actions with a `version` input matching `package.json`; it builds macOS, Windows, and Linux on native runners and publishes `vX.Y.Z` to GitHub Releases through `electron-builder`. The optional `platform` input defaults to `all` and can republish one platform if a release job needs to be retried.
 
 ### Cross-building
 

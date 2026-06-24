@@ -7,6 +7,16 @@ on:
         description: 'Version to publish. Must match package.json, for example 0.1.1.'
         required: true
         type: string
+      platform:
+        description: 'Platform to publish.'
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - mac
+          - linux
+          - win
 
 permissions:
   contents: write
@@ -34,15 +44,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         with:
           fetch-depth: 0
 
       - uses: actions/setup-node@v5
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         with:
           node-version: '22'
           cache: npm
 
       - name: Verify version matches package.json
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         shell: bash
         run: |
           set -euo pipefail
@@ -53,17 +66,34 @@ jobs:
           fi
 
       - name: Install dependencies
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         run: npm ci
 
       - name: Build
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         run: npm run build
 
       - name: Build and publish ${{ matrix.platform }}
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK || matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npx electron-builder --${{ matrix.platform }} --publish always
+        run: |
+          set -euo pipefail
+
+          if [ "${{ matrix.platform }}" = "mac" ] && [ -n "${MAC_CSC_LINK:-}" ]; then
+            export CSC_LINK="${MAC_CSC_LINK}"
+            export CSC_KEY_PASSWORD="${MAC_CSC_KEY_PASSWORD:-}"
+          elif [ "${{ matrix.platform }}" = "win" ] && [ -n "${WIN_CSC_LINK:-}" ]; then
+            export CSC_LINK="${WIN_CSC_LINK}"
+            export CSC_KEY_PASSWORD="${WIN_CSC_KEY_PASSWORD:-}"
+          fi
+
+          npx electron-builder --${{ matrix.platform }} --publish always

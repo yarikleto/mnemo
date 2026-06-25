@@ -1,5 +1,6 @@
 .superpowers/
 docs/superpowers/
+.agents/
 .claude/
 .codex/
 CLAUDE.md

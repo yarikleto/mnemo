@@ -34,6 +34,21 @@ describe('config store', () => {
     expect(cfg.rootPath).toBe('')
   })
 
+  it('rejects corrupt JSON instead of replacing the config', async () => {
+    await fs.writeFile(file, '{')
+
+    await expect(loadConfig(file, '/tmp/data')).rejects.toThrow()
+    expect(await fs.readFile(file, 'utf8')).toBe('{')
+  })
+
+  it('rejects invalid config schema instead of replacing the config', async () => {
+    const invalid = JSON.stringify({ rootPath: 123 })
+    await fs.writeFile(file, invalid)
+
+    await expect(loadConfig(file, '/tmp/data')).rejects.toThrow()
+    expect(await fs.readFile(file, 'utf8')).toBe(invalid)
+  })
+
   it('migrates a pre-v1 config (onboardedAt missing, cards/ exists) by stamping onboardedAt', async () => {
     const vault = await fs.mkdtemp(path.join(os.tmpdir(), 'vault-'))
     await fs.mkdir(path.join(vault, 'cards'), { recursive: true })

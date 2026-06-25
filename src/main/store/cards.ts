@@ -86,7 +86,12 @@ export async function moveCardOnDisk(
 ): Promise<string> {
   const dir = path.join(cardsDir(rootPath), newNamespace)
   await fs.mkdir(dir, { recursive: true })
-  const newPath = path.join(dir, path.basename(currentPath))
+  const targetPath = path.join(dir, path.basename(currentPath))
+  if (path.resolve(targetPath) === path.resolve(currentPath)) return currentPath
+
+  const raw = await fs.readFile(currentPath, 'utf8')
+  const { frontmatter } = parseCardFile(raw)
+  const newPath = await uniquePath(dir, path.basename(currentPath, '.md'), frontmatter.id)
   await fs.rename(currentPath, newPath)
   return newPath
 }

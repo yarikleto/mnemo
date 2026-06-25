@@ -54,6 +54,23 @@ describe('cards store', () => {
     expect(read.namespace).toBe('b/nested')
   })
 
+  it('moves to a unique filename instead of overwriting an existing basename', async () => {
+    const moving = await createCardOnDisk(root, { namespace: 'a', prompts: ['Q'], body: 'Moving body' })
+    const existing = await createCardOnDisk(root, { namespace: 'b/nested', prompts: ['Q'], body: 'Existing body' })
+    expect(path.basename(moving.path)).toBe(path.basename(existing.path))
+
+    const newPath = await moveCardOnDisk(root, moving.path, 'b/nested')
+
+    expect(newPath).not.toBe(existing.path)
+    await expect(fs.access(moving.path)).rejects.toThrow()
+    const moved = await readCardAtPath(root, newPath)
+    const preserved = await readCardAtPath(root, existing.path)
+    expect(moved.id).toBe(moving.id)
+    expect(moved.body.trim()).toBe('Moving body')
+    expect(preserved.id).toBe(existing.id)
+    expect(preserved.body.trim()).toBe('Existing body')
+  })
+
   it('deletes a card', async () => {
     const c = await createCardOnDisk(root, { namespace: 'a', prompts: ['Q'], body: 'B' })
     await deleteCardOnDisk(c.path)

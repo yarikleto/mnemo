@@ -28,6 +28,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
   const [dirty, setDirty] = useState(false)
   const [conflict, setConflict] = useState(false)
   const saveTimer = useRef<number | null>(null)
+  const saveRef = useRef<((explicit?: boolean) => Promise<void>) | null>(null)
   const dirtyRef = useRef(false)
   const loadedIdRef = useRef<string | null>(null)
   // Track our own writes vs. external ones — set briefly around save() so the
@@ -125,6 +126,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     setConflict(false)
     if (explicit) navigate(`/card/${loadedId}`)
   }
+  useEffect(() => { saveRef.current = save })
 
   const markDirty = () => { if (!dirtyRef.current) setDirty(true) }
 
@@ -133,7 +135,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     if (!loadedId) return
     if (conflict) return
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => { save(false) }, 2000)
+    saveTimer.current = window.setTimeout(() => { void saveRef.current?.(false) }, 2000)
   }
 
   useEffect(() => {

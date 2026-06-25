@@ -1,4 +1,5 @@
-import { ipcMain, BrowserWindow, app, shell } from 'electron'
+import { app, shell } from 'electron'
+import type { BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
@@ -10,18 +11,19 @@ import { createScheduler, rateCard } from '../fsrs/scheduler'
 import { buildDueQueue } from '../fsrs/queue'
 import { openInExternalEditor } from '../editor-open'
 import { exportCardsWithDialog, pickImportFileWithDialog } from '../archive/dialog'
-import { importArchive, validateNamespace } from '../archive/import'
+import { importArchive } from '../archive/import'
 import { patchConfig } from '../store/config'
 import { configPath, cardsDir, defaultRootPath } from '../paths'
 import { ulid } from '../id'
 import { logFilePath } from '../log'
-import type { Config, PromptFrontmatter } from '../../shared/schema'
+import { validateNamespace, type Config, type PromptFrontmatter } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
 import type { Watcher } from '../watcher'
 import type { ApiResult, NamespaceNode, DashboardData } from '../../shared/api'
 import type { WidgetId } from '../../shared/constants'
 import { RATINGS, WIDGET_IDS } from '../../shared/constants'
+import { createIpcScope, VOID } from './lifecycle'
 
 type Ctx = {
   getConfig: () => Config
@@ -30,9 +32,6 @@ type Ctx = {
   watcher: Watcher
   win: BrowserWindow
 }
-
-const ok = <T>(data: T): ApiResult<T> => ({ ok: true, data })
-const err = (e: unknown): ApiResult<never> => ({ ok: false, error: e instanceof Error ? e.message : String(e) })
 
 function namespacesFromIndex(index: CardIndex, dueCountsByNs: Map<string, number>): NamespaceNode {
   const root: NamespaceNode = { name: '', path: '', dueCount: 0, totalCount: 0, children: [] }
@@ -68,17 +67,16 @@ function namespacesFromIndex(index: CardIndex, dueCountsByNs: Map<string, number
   return root
 }
 
+export function validateDeletableNamespace(ns: string): string {
+  const validatedNs = validateNamespace(ns)
+  if (!validatedNs) throw new Error('Namespace is required')
+  return validatedNs
+}
+
 export function registerIpc(ctx: Ctx): () => void {
   const userDataPath = app.getPath('userData')
-  const h = <T, A = void>(channel: string, schema: z.ZodType<A>, fn: (args: A) => Promise<T> | T) => {
-    ipcMain.handle(channel, async (_e, raw) => {
-      try {
-        const args = schema.parse(raw)
-        return ok(await fn(args))
-      } catch (e) { return err(e) }
-    })
-  }
-  const VOID = z.undefined().or(z.null()).transform(() => undefined)
+  const ipc = createIpcScope()
+  const h = ipc.handle
 
   h('listNamespaces', VOID, async () => {
     const rootPath = ctx.getConfig().rootPath
@@ -167,8 +165,7 @@ export function registerIpc(ctx: Ctx): () => void {
   })
 
   h('deleteNamespace', z.string(), async (ns) => {
-    if (!ns) throw new Error('Namespace is required')
-    const validatedNs = validateNamespace(ns)
+    const validatedNs = validateDeletableNamespace(ns)
     const rootPath = ctx.getConfig().rootPath
     const toDelete = ctx.index.all().filter(m => m.namespace === validatedNs || m.namespace.startsWith(validatedNs + '/'))
     for (const meta of toDelete) {
@@ -331,24 +328,18 @@ export function registerIpc(ctx: Ctx): () => void {
   ctx.watcher.on('card-added', onAdded)
   ctx.watcher.on('card-changed', onChanged)
   ctx.watcher.on('card-removed', onRemoved)
+  ipc.addDisposer(() => {
+    ctx.watcher.off('card-added', onAdded)
+    ctx.watcher.off('card-changed', onChanged)
+    ctx.watcher.off('card-removed', onRemoved)
+  })
 
   // Orphan state cleanup on startup: any state keyed by an unknown card id gets removed.
   listStateIds(ctx.getConfig().rootPath).then(ids => {
     for (const id of ids) if (!ctx.index.get(id)) deleteState(ctx.getConfig().rootPath, id)
   })
 
-  return () => {
-    ctx.watcher.off('card-added', onAdded)
-    ctx.watcher.off('card-changed', onChanged)
-    ctx.watcher.off('card-removed', onRemoved)
-    for (const ch of [
-      'listNamespaces','listCards','getDueQueue','readCard','createCard','updateCard',
-      'moveCard','deleteCard','deleteNamespace','rateReview','openInExternalEditor','saveAsset','getConfig','updateConfig',
-      'searchCards','rescan','getDashboardData',
-      'exportCards','pickImportFile','importArchive',
-      'openVaultFolder','completeOnboarding','getDefaultVaultPath','copyDiagnostics'
-    ]) ipcMain.removeHandler(ch)
-  }
+  return ipc.dispose
 }
 
 async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<DashboardData> {

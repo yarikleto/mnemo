@@ -34,6 +34,25 @@ describe('state store', () => {
     expect(read.state).toBe('Review')
   })
 
+  it('rejects corrupt JSON instead of returning a new state', async () => {
+    const file = path.join(root, 'state', `${ID_ABC}.json`)
+    await fs.mkdir(path.dirname(file), { recursive: true })
+    await fs.writeFile(file, '{')
+
+    await expect(readState(root, ID_ABC)).rejects.toThrow()
+    expect(await fs.readFile(file, 'utf8')).toBe('{')
+  })
+
+  it('rejects invalid state schema instead of returning a new state', async () => {
+    const file = path.join(root, 'state', `${ID_ABC}.json`)
+    await fs.mkdir(path.dirname(file), { recursive: true })
+    const invalid = JSON.stringify({ id: ID_ABC, reps: 12 })
+    await fs.writeFile(file, invalid)
+
+    await expect(readState(root, ID_ABC)).rejects.toThrow()
+    expect(await fs.readFile(file, 'utf8')).toBe(invalid)
+  })
+
   it('lists state ids', async () => {
     await writeState(root, { ...(await readState(root, ID_X)), reps: 1 })
     await writeState(root, { ...(await readState(root, ID_Y)), reps: 1 })

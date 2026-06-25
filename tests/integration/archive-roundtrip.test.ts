@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import JSZip from 'jszip'
-import { createCardOnDisk } from '../../src/main/store/cards'
+import { createCardOnDisk, readCardAtPath } from '../../src/main/store/cards'
 import { CardIndex } from '../../src/main/store/index'
 import { buildArchiveZip } from '../../src/main/archive/export'
 import { importArchive, readManifest } from '../../src/main/archive/import'
@@ -55,7 +55,7 @@ describe('archive round-trip', () => {
     const srcIndex = new CardIndex()
     await srcIndex.buildFrom(src)
 
-    const { zip, cardCount, warnings } = await buildArchiveZip(src, srcIndex, [a.id, b.id])
+    const { zip, cardCount, warnings, cards } = await buildArchiveZip(src, srcIndex, [a.id, b.id])
     expect(cardCount).toBe(2)
     expect(warnings).toEqual([])
 
@@ -63,7 +63,8 @@ describe('archive round-trip', () => {
       version: ARCHIVE_VERSION,
       exportedAt: new Date().toISOString(),
       cardCount,
-      warnings
+      warnings,
+      cards
     })
 
     const manifest = await readManifest(archive)
@@ -92,16 +93,62 @@ describe('archive round-trip', () => {
     expect(imported.prompts[0]!.text).toBe('hola?')
   })
 
-  it('skips existing IDs when overwrite=false', async () => {
-    const a = await createCardOnDisk(src, { namespace: 'x', prompts: ['q?'], body: 'orig' })
+  it('keeps same-basename assets distinct when importing into one namespace', async () => {
+    const body = 'diagram: ![shared](./assets/shared.png)'
+    const a = await createCardOnDisk(src, { namespace: 'source/a', prompts: ['a?'], body })
+    const b = await createCardOnDisk(src, { namespace: 'source/b', prompts: ['b?'], body })
+    await fs.mkdir(path.join(path.dirname(a.path), 'assets'), { recursive: true })
+    await fs.mkdir(path.join(path.dirname(b.path), 'assets'), { recursive: true })
+    await fs.writeFile(path.join(path.dirname(a.path), 'assets', 'shared.png'), 'asset-a')
+    await fs.writeFile(path.join(path.dirname(b.path), 'assets', 'shared.png'), 'asset-b')
+
     const srcIndex = new CardIndex()
     await srcIndex.buildFrom(src)
-    const { zip, cardCount, warnings } = await buildArchiveZip(src, srcIndex, [a.id])
+    const { zip, cardCount, warnings, cards } = await buildArchiveZip(src, srcIndex, [a.id, b.id])
+    expect(warnings).toEqual([])
+    const archivedAssets = cards.flatMap(card => card.assets.map(asset => asset.path))
+    expect(new Set(archivedAssets).size).toBe(2)
+
     await writeZip(zip, archive, {
       version: ARCHIVE_VERSION,
       exportedAt: new Date().toISOString(),
       cardCount,
-      warnings
+      warnings,
+      cards
+    })
+
+    const dstIndex = new CardIndex()
+    await dstIndex.buildFrom(dst)
+    const summary = await importArchive(
+      makeCtx(dst, dstIndex) as never,
+      { path: archive, targetNamespace: 'imported', overwrite: false }
+    )
+    expect(summary.warnings).toEqual([])
+    expect(summary.imported).toBe(2)
+
+    const dstAfter = new CardIndex()
+    await dstAfter.buildFrom(dst)
+    const importedA = await readCardAtPath(dst, dstAfter.get(a.id)!.path)
+    const importedB = await readCardAtPath(dst, dstAfter.get(b.id)!.path)
+    const assetA = importedA.body.match(/\.\/assets\/([^)]+)/)![1]!
+    const assetB = importedB.body.match(/\.\/assets\/([^)]+)/)![1]!
+
+    expect(assetA).not.toBe(assetB)
+    await expect(fs.readFile(path.join(path.dirname(importedA.path), 'assets', assetA), 'utf8')).resolves.toBe('asset-a')
+    await expect(fs.readFile(path.join(path.dirname(importedB.path), 'assets', assetB), 'utf8')).resolves.toBe('asset-b')
+  })
+
+  it('skips existing IDs when overwrite=false', async () => {
+    const a = await createCardOnDisk(src, { namespace: 'x', prompts: ['q?'], body: 'orig' })
+    const srcIndex = new CardIndex()
+    await srcIndex.buildFrom(src)
+    const { zip, cardCount, warnings, cards } = await buildArchiveZip(src, srcIndex, [a.id])
+    await writeZip(zip, archive, {
+      version: ARCHIVE_VERSION,
+      exportedAt: new Date().toISOString(),
+      cardCount,
+      warnings,
+      cards
     })
 
     await createCardOnDisk(dst, { namespace: 'x', prompts: ['q?'], body: 'orig' })
@@ -129,12 +176,13 @@ describe('archive round-trip', () => {
     const a = await createCardOnDisk(src, { namespace: 'src', prompts: ['v2?'], body: 'updated' })
     const srcIndex = new CardIndex()
     await srcIndex.buildFrom(src)
-    const { zip, cardCount, warnings } = await buildArchiveZip(src, srcIndex, [a.id])
+    const { zip, cardCount, warnings, cards } = await buildArchiveZip(src, srcIndex, [a.id])
     await writeZip(zip, archive, {
       version: ARCHIVE_VERSION,
       exportedAt: new Date().toISOString(),
       cardCount,
-      warnings
+      warnings,
+      cards
     })
 
     // Seed dst by copying the src card file into a different namespace (same id on disk, older body)

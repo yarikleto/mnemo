@@ -8,7 +8,8 @@ export async function loadConfig(configFile: string, _fallbackRootPath: string):
     const raw = await fs.readFile(configFile, 'utf8')
     const parsed = ConfigSchema.parse(JSON.parse(raw))
     return await migrateConfigIfNeeded(configFile, parsed)
-  } catch {
+  } catch (e) {
+    if (!isNotFoundError(e)) throw e
     // Fresh install — no auto-mkdir of subdirs. rootPath stays the empty
     // sentinel until completeOnboarding creates the managed app-data vault.
     const cfg: Config = { rootPath: '', ...DEFAULT_CONFIG }
@@ -27,7 +28,8 @@ async function migrateConfigIfNeeded(configFile: string, cfg: Config): Promise<C
   if (!cfg.rootPath) return cfg
   try {
     await fs.access(path.join(cfg.rootPath, 'cards'))
-  } catch {
+  } catch (e) {
+    if (!isNotFoundError(e)) throw e
     return cfg
   }
   const next: Config = { ...cfg, onboardedAt: new Date().toISOString() }
@@ -50,4 +52,8 @@ export async function patchConfig(configFile: string, current: Config, patch: Pa
     autoUpdate: patch.autoUpdate ? { ...current.autoUpdate, ...patch.autoUpdate } : current.autoUpdate
   }
   return saveConfig(configFile, merged)
+}
+
+function isNotFoundError(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && 'code' in e && e.code === 'ENOENT'
 }

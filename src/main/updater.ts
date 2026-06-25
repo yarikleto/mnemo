@@ -1,8 +1,10 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app } from 'electron'
+import type { BrowserWindow } from 'electron'
 // electron-updater is a CJS package; under our ESM main bundle the
 // default-import + destructure idiom is the only one Node accepts.
 import pkg from 'electron-updater'
 import log from './log'
+import { createIpcScope, VOID } from './ipc/lifecycle'
 import type { Config } from '../shared/schema'
 
 const { autoUpdater } = pkg
@@ -52,17 +54,14 @@ export function startAutoUpdater(win: BrowserWindow, getConfig: () => Config): v
 
 // Renderer-driven restart. We do not auto-relaunch silently; the renderer
 // chooses the moment via the "Restart now" button in the update banner.
-export function setupUpdaterIpc(win: BrowserWindow): void {
+export function setupUpdaterIpc(win: BrowserWindow): () => void {
   void win
-  ipcMain.handle('restartToInstall', async () => {
+  const ipc = createIpcScope()
+  ipc.handle('restartToInstall', VOID, async () => {
     if (!app.isPackaged) {
-      return { ok: false as const, error: 'restartToInstall is a no-op in dev' }
+      throw new Error('restartToInstall is a no-op in dev')
     }
-    try {
-      autoUpdater.quitAndInstall()
-      return { ok: true as const, data: undefined }
-    } catch (e) {
-      return { ok: false as const, error: e instanceof Error ? e.message : String(e) }
-    }
+    autoUpdater.quitAndInstall()
   })
+  return ipc.dispose
 }

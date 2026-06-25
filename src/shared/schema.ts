@@ -3,6 +3,54 @@ import { RATINGS, FSRS_STATES, WIDGET_IDS } from './constants'
 
 const UlidSchema = z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'id must be a ULID')
 
+export const NamespaceSchema = z.string().transform((value, ctx) => {
+  const trimmed = value.trim()
+  if (trimmed === '') return ''
+  if (trimmed.startsWith('/') || trimmed.endsWith('/')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Namespace must not start or end with "/".'
+    })
+    return z.NEVER
+  }
+
+  const parts = trimmed.split('/')
+  for (const part of parts) {
+    if (part === '' || part === '.' || part === '..') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid namespace segment: "${part}"`
+      })
+      return z.NEVER
+    }
+    if (part.startsWith('.')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Namespace segment must not start with ".": "${part}"`
+      })
+      return z.NEVER
+    }
+    if (/[\\:*?"<>|\0]/.test(part) || /[\x00-\x1f]/.test(part)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid character in namespace segment: "${part}"`
+      })
+      return z.NEVER
+    }
+  }
+  return trimmed
+})
+
+export function validateNamespace(ns: string): string {
+  const result = NamespaceSchema.safeParse(ns)
+  if (result.success) return result.data
+  throw new Error(result.error.issues[0]?.message ?? 'Invalid namespace.')
+}
+
+export function isValidNamespace(ns: string): boolean {
+  return NamespaceSchema.safeParse(ns).success
+}
+
 export const PromptFrontmatterSchema = z.object({
   id: UlidSchema,
   text: z.string().min(1)

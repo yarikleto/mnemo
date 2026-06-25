@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateNamespace } from '../../src/main/archive/import'
+import { NamespaceSchema, isValidNamespace, validateNamespace } from '../../src/shared/schema'
 
 describe('validateNamespace — path traversal rejection', () => {
   it('rejects ".."', () => {
@@ -33,6 +33,17 @@ describe('validateNamespace — path traversal rejection', () => {
   it('rejects null byte in segment', () => {
     expect(() => validateNamespace('foo\0bar')).toThrow()
   })
+
+  it('rejects segments starting with "."', () => {
+    expect(() => validateNamespace('.hidden')).toThrow()
+    expect(() => validateNamespace('foo/.hidden')).toThrow()
+  })
+
+  it('rejects reserved filesystem characters', () => {
+    for (const char of [':', '*', '?', '"', '<', '>', '|']) {
+      expect(() => validateNamespace(`foo${char}bar`)).toThrow()
+    }
+  })
 })
 
 describe('validateNamespace — valid inputs', () => {
@@ -54,5 +65,17 @@ describe('validateNamespace — valid inputs', () => {
 
   it('trims surrounding whitespace', () => {
     expect(validateNamespace('  foo/bar  ')).toBe('foo/bar')
+  })
+
+  it('exposes the same normalized value through NamespaceSchema', () => {
+    const parsed = NamespaceSchema.safeParse('  foo/bar  ')
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data).toBe('foo/bar')
+  })
+
+  it('exposes the same validity result for UI checks', () => {
+    expect(isValidNamespace('foo/bar')).toBe(true)
+    expect(isValidNamespace('foo/../bar')).toBe(false)
+    expect(NamespaceSchema.safeParse('foo/../bar').success).toBe(false)
   })
 })

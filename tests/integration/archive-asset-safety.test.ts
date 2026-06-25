@@ -5,7 +5,7 @@ import os from 'node:os'
 import JSZip from 'jszip'
 import { importArchive } from '../../src/main/archive/import'
 import { referencedAssets } from '../../src/main/archive/export'
-import { isSafeAssetName } from '../../src/main/archive/asset-safety'
+import { isSafeArchiveAssetPath, isSafeAssetName } from '../../src/main/archive/asset-safety'
 import { CardIndex } from '../../src/main/store/index'
 import { ARCHIVE_VERSION } from '../../src/main/archive/manifest'
 
@@ -64,6 +64,17 @@ describe('archive asset safety', () => {
       expect(isSafeAssetName('.hidden')).toBe(false)
       expect(isSafeAssetName('.')).toBe(false)
       expect(isSafeAssetName('..')).toBe(false)
+    })
+  })
+
+  describe('isSafeArchiveAssetPath', () => {
+    it('accepts scoped manifest asset paths', () => {
+      expect(isSafeArchiveAssetPath('assets/01HZZZZZZZZZZZZZZZZZZZZZZA/diagram.png')).toBe(true)
+    })
+
+    it('rejects traversal paths', () => {
+      expect(isSafeArchiveAssetPath('assets/../evil/diagram.png')).toBe(false)
+      expect(isSafeArchiveAssetPath('cards/assets/diagram.png')).toBe(false)
     })
   })
 
@@ -138,6 +149,52 @@ describe('archive asset safety', () => {
       // A warning must be present describing the unsafe name
       const warnMatch = summary.warnings.some(w => w.includes('Skipping unsafe asset name'))
       expect(warnMatch).toBe(true)
+    })
+
+    it('does not import assets from unsafe manifest paths', async () => {
+      const cardBody = '![diagram](./assets/diagram.png)'
+      const cardFrontmatter = [
+        '---',
+        'id: 01HZZZZZZZZZZZZZZZZZZZZZZB',
+        'prompts:',
+        '  - id: 01HZZZZZZZZZZZZZZZZZZZZZZ2',
+        '    text: "safe question?"',
+        'tags: []',
+        `created: '2024-01-01T00:00:00.000Z'`,
+        '---',
+      ].join('\n')
+      const cardContent = `${cardFrontmatter}\n${cardBody}\n`
+
+      const zip = new JSZip()
+      zip.file('manifest.json', JSON.stringify({
+        version: ARCHIVE_VERSION,
+        exportedAt: new Date().toISOString(),
+        cardCount: 1,
+        warnings: [],
+        cards: [
+          {
+            path: 'cards/the-card.md',
+            assets: [{ name: 'diagram.png', path: 'assets/../evil/diagram.png' }]
+          }
+        ]
+      }))
+      zip.file('cards/the-card.md', cardContent)
+      zip.file('assets/../evil/diagram.png', Buffer.from('MALICIOUS PAYLOAD'))
+
+      const bytes = await zip.generateAsync({ type: 'nodebuffer' })
+      await fs.writeFile(archive, bytes)
+
+      const dstIndex = new CardIndex()
+      await dstIndex.buildFrom(dst)
+
+      const summary = await importArchive(
+        makeCtx(dst, dstIndex) as never,
+        { path: archive, targetNamespace: 'imported', overwrite: false }
+      )
+
+      expect(summary.imported).toBe(1)
+      expect(summary.warnings.some(w => w.includes('Skipping unsafe archive asset path'))).toBe(true)
+      await expect(fs.access(path.join(dst, 'cards', 'imported', 'assets', 'diagram.png'))).rejects.toThrow()
     })
   })
 })

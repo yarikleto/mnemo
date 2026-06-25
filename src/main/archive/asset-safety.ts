@@ -14,3 +14,13 @@ export function isSafeAssetName(name: string): boolean {
   if (name.startsWith('.')) return false
   return true
 }
+
+export function isSafeArchiveAssetPath(archivePath: string): boolean {
+  if (archivePath.includes('\\') || archivePath.includes('\0')) return false
+  const parts = archivePath.split('/')
+  if (parts.length !== 3) return false
+  const [root, scope, filename] = parts
+  if (root !== 'assets') return false
+  if (!scope || scope === '.' || scope === '..' || scope.startsWith('.')) return false
+  return typeof filename === 'string' && isSafeAssetName(filename)
+}

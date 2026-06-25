@@ -23,7 +23,8 @@ export async function readState(rootPath: string, id: string): Promise<ReviewSta
   try {
     const raw = await fs.readFile(stateFile(rootPath, id), 'utf8')
     return ReviewStateSchema.parse(JSON.parse(raw))
-  } catch {
+  } catch (e) {
+    if (!isNotFoundError(e)) throw e
     return newState(id)
   }
 }
@@ -37,7 +38,8 @@ export async function listStateIds(rootPath: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(stateDir(rootPath))
     return entries.filter(e => e.endsWith('.json')).map(e => e.replace(/\.json$/, ''))
-  } catch {
+  } catch (e) {
+    if (!isNotFoundError(e)) throw e
     return []
   }
 }
@@ -45,7 +47,12 @@ export async function listStateIds(rootPath: string): Promise<string[]> {
 export async function deleteState(rootPath: string, id: string): Promise<void> {
   try {
     await fs.unlink(stateFile(rootPath, id))
-  } catch {
+  } catch (e) {
+    if (!isNotFoundError(e)) throw e
     /* idempotent */
   }
+}
+
+function isNotFoundError(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && 'code' in e && e.code === 'ENOENT'
 }

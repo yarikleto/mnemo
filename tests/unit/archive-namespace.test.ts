@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateNamespace } from '../../src/main/archive/import'
+import { validateNamespace } from '../../src/shared/schema'
 import { referencedAssets } from '../../src/main/archive/export'
 
 describe('validateNamespace', () => {
@@ -25,6 +25,10 @@ describe('validateNamespace', () => {
   })
   it('rejects backslash', () => {
     expect(() => validateNamespace('foo\\bar')).toThrow()
+  })
+  it('rejects filesystem-reserved characters', () => {
+    expect(() => validateNamespace('foo:bar')).toThrow()
+    expect(() => validateNamespace('foo?bar')).toThrow()
   })
 })
 

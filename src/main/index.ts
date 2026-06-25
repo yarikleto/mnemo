@@ -109,7 +109,7 @@ async function createWindow() {
     return net.fetch(pathToFileURL(abs).toString())
   })
 
-  registerIpc({
+  const disposeIpc = registerIpc({
     getConfig: () => config,
     setConfig: (c) => { config = c },
     index,
@@ -118,11 +118,15 @@ async function createWindow() {
   })
 
   installAppMenu(win)
-  setupUpdaterIpc(win)
+  const disposeUpdaterIpc = setupUpdaterIpc(win)
   startAutoUpdater(win, () => config)
 
   mainWindow = win
-  win.on('closed', () => { if (mainWindow === win) mainWindow = null })
+  win.on('closed', () => {
+    disposeUpdaterIpc()
+    disposeIpc()
+    if (mainWindow === win) mainWindow = null
+  })
 
   if (process.env.VITE_DEV_SERVER_URL) {
     await win.loadURL(process.env.VITE_DEV_SERVER_URL)

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ArchivePreview, ImportSummary } from '../../shared/api'
+import { NamespaceSchema } from '../../shared/schema'
 import { unwrap } from '../lib/api'
 import { useAppStore } from '../stores/app-store'
 import { useModalA11y } from '../lib/use-modal-a11y'
@@ -10,8 +11,6 @@ type Stage =
   | { kind: 'picking' }
   | { kind: 'ready'; path: string; preview: ArchivePreview }
   | { kind: 'done'; summary: ImportSummary }
-
-const NS_PATTERN = /^(?:[^/\\:*?"<>|.\0][^/\\:*?"<>|\0]*(?:\/[^/\\:*?"<>|.\0][^/\\:*?"<>|\0]*)*)?$/
 
 export function ImportDialog({ onClose }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: 'picking' })
@@ -41,16 +40,17 @@ export function ImportDialog({ onClose }: Props) {
     return () => { cancelled = true }
   }, [stage.kind, onClose])
 
-  const targetValid = NS_PATTERN.test(target.trim())
+  const targetResult = useMemo(() => NamespaceSchema.safeParse(target), [target])
+  const targetValid = targetResult.success
 
   const doImport = async () => {
-    if (stage.kind !== 'ready' || busy || !targetValid) return
+    if (stage.kind !== 'ready' || busy || !targetResult.success) return
     setBusy(true)
     setErr(null)
     try {
       const summary = await unwrap(window.api.importArchive({
         path: stage.path,
-        targetNamespace: target.trim(),
+        targetNamespace: targetResult.data,
         overwrite
       }))
       await refreshNamespaces()

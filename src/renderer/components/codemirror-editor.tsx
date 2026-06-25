@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { EditorState } from '@codemirror/state'
+import { Annotation, EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
@@ -12,7 +12,9 @@ export function CodeMirrorEditor({ value, onChange, onPasteImage, className = 'h
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
+  const onChangeRef = useRef(onChange)
   const onPasteImageRef = useRef(onPasteImage)
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
   useEffect(() => { onPasteImageRef.current = onPasteImage }, [onPasteImage])
 
   useEffect(() => {
@@ -43,7 +45,11 @@ export function CodeMirrorEditor({ value, onChange, onPasteImage, className = 'h
               return true
             }
           }),
-          EditorView.updateListener.of(u => { if (u.docChanged) onChange(u.state.doc.toString()) })
+          EditorView.updateListener.of(u => {
+            if (!u.docChanged) return
+            if (u.transactions.some(tr => tr.annotation(propSyncAnnotation))) return
+            onChangeRef.current(u.state.doc.toString())
+          })
         ]
       })
     })
@@ -56,9 +62,14 @@ export function CodeMirrorEditor({ value, onChange, onPasteImage, className = 'h
     const view = viewRef.current
     if (!view) return
     if (view.state.doc.toString() !== value) {
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } })
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: value },
+        annotations: propSyncAnnotation.of(true)
+      })
     }
   }, [value])
 
   return <div ref={hostRef} className={className} />
 }
+
+const propSyncAnnotation = Annotation.define<boolean>()

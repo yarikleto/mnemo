@@ -9,8 +9,8 @@ export async function exportCardsWithDialog(
   ctx: { rootPath: string; index: CardIndex; win: BrowserWindow },
   ids: string[]
 ): Promise<{ path: string } | null> {
-  const { zip, warnings, cardCount } = await buildArchiveZip(ctx.rootPath, ctx.index, ids)
-  const { bytes } = await finalizeArchive(zip, cardCount, warnings)
+  const { zip, warnings, cardCount, cards } = await buildArchiveZip(ctx.rootPath, ctx.index, ids)
+  const { bytes } = await finalizeArchive(zip, cardCount, warnings, cards)
 
   const defaultName = `mnemo-export-${new Date().toISOString().slice(0, 10)}.zip`
   const result = await dialog.showSaveDialog(ctx.win, {

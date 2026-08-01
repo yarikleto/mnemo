@@ -35,6 +35,9 @@ async function main() {
 
   const prompts = args.prompt ?? []
   if (prompts.length === 0) fail('missing required --prompt (may be given multiple times)')
+  // A whitespace-only prompt serialises to an empty scalar that fails the card
+  // schema on read — the file would land in the vault and never load.
+  if (prompts.some((t) => !String(t).trim())) fail('--prompt cannot be blank')
   const namespace = required(args, 'namespace')
   const tags = args.tags
     ? args.tags.split(',').map((s) => s.trim()).filter(Boolean)
@@ -180,19 +183,26 @@ function slugify(s) {
 }
 
 function yamlString(s) {
-  // Single-quoted YAML scalar: escape ' as ''. Safe for any printable string.
-  return `'${String(s).replace(/'/g, "''")}'`
+  const str = String(s)
+  // Single-quoted YAML can't carry line breaks or control characters at this
+  // indentation; JSON's escaping is a valid YAML double-quoted scalar.
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f]/.test(str)) return JSON.stringify(str)
+  return `'${str.replace(/'/g, "''")}'`
 }
 
-// Matches serializeCardFile / renderPrompt in src/main/markdown/parse.ts.
+// Matches serializeCardFile / renderPrompt in src/main/markdown/parse.ts —
+// keep the two in lockstep. `|2-` pins the block scalar's indentation: without
+// it YAML infers the indent from the first content line, so a prompt whose
+// first line is itself indented (a code snippet, typically) makes every
+// shallower line below it a syntax error and the card never parses back.
 function renderPrompt(p) {
   const head = `  - id: ${p.id}`
-  if (p.text.includes('\n')) {
-    const lines = [head, '    text: |-']
-    for (const line of p.text.replace(/\n+$/, '').split('\n')) lines.push(`      ${line}`)
-    return lines
-  }
-  return [head, `    text: ${yamlString(p.text)}`]
+  if (!/[\r\n]/.test(p.text)) return [head, `    text: ${yamlString(p.text)}`]
+  const lines = [head, '    text: |2-']
+  const text = p.text.replace(/\r\n?/g, '\n').replace(/\n+$/, '')
+  for (const line of text.split('\n')) lines.push(line === '' ? '' : `      ${line}`)
+  return lines
 }
 
 function fail(msg) {

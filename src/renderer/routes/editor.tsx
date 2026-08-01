@@ -7,6 +7,7 @@ import { ScrollFade } from '../components/scroll-fade'
 import { CardPreviewModal } from '../components/card-preview-modal'
 import { unwrap } from '../lib/api'
 import { useAppStore } from '../stores/app-store'
+import type { PromptFrontmatter } from '../../shared/schema'
 
 type PromptDraft = { key: string; id?: string; text: string }
 
@@ -24,10 +25,12 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
   const [loadedId, setLoadedId] = useState<string | null>(null)
   const [cardPath, setCardPath] = useState<string | null>(null)
   const [status, setStatus] = useState('')
+  const [statusIsError, setStatusIsError] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [conflict, setConflict] = useState(false)
   const saveTimer = useRef<number | null>(null)
+  const saving = useRef(false)
   const saveRef = useRef<((explicit?: boolean) => Promise<void>) | null>(null)
   const dirtyRef = useRef(false)
   const loadedIdRef = useRef<string | null>(null)
@@ -61,6 +64,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
         setLoadedId(c.id)
         setCardPath(c.path)
         setStatus('')
+        setStatusIsError(false)
         setDirty(false)
         setConflict(false)
         if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
@@ -89,22 +93,69 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const validPrompts = () => prompts.map(p => ({ id: p.id, text: p.text.trim() })).filter(p => p.text.length > 0)
+  // Keeps the draft key alongside the trimmed text so the saved prompts can be
+  // matched back to the editors they came from.
+  const validPrompts = () => prompts
+    .map(p => ({ key: p.key, id: p.id, text: p.text.trim() }))
+    .filter(p => p.text.length > 0)
 
-  const save = async (explicit = false) => {
+  const report = (message: string, isError = false) => { setStatus(message); setStatusIsError(isError) }
+  const fail = (e: unknown) => report(e instanceof Error ? e.message : String(e), true)
+
+  const armAutosave = (delay = 2000) => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => { void saveRef.current?.(false) }, delay)
+  }
+
+  // Adopt the ids the main process assigned, without replacing the drafts. The
+  // previous version rebuilt every draft with a fresh `key`, which remounted each
+  // CodeMirror instance on every autosave — losing cursor position and undo
+  // history mid-typing — and discarded any keystrokes made during the round trip.
+  const adoptPromptIds = (saved: Array<{ key: string }>, fresh: PromptFrontmatter[]) => {
+    setPrompts(ps => ps.map(p => {
+      const i = saved.findIndex(s => s.key === p.key)
+      const match = i >= 0 ? fresh[i] : undefined
+      return match && match.id !== p.id ? { ...p, id: match.id } : p
+    }))
+  }
+
+  // Every save path is fired from a handler that ignores the returned promise, so
+  // a rejection here (invalid deck name, unwritable vault, card deleted under us)
+  // used to surface only as an unhandled rejection — the user saw nothing at all.
+  const save = async (explicit = false): Promise<void> => {
+    // Autosave and ⌘S can overlap; without this a double ⌘S on an unsaved card
+    // creates the card twice.
+    if (saving.current) {
+      // The autosave timer has already fired and cleared itself, so dropping this
+      // call outright would strand the edit unsaved with nothing left to retry it.
+      if (!explicit) armAutosave(400)
+      return
+    }
+    saving.current = true
+    try {
+      await runSave(explicit)
+    } catch (e) {
+      fail(e)
+    } finally {
+      saving.current = false
+    }
+  }
+
+  const runSave = async (explicit: boolean) => {
     const tagsArr = tags.split(',').map(s => s.trim()).filter(Boolean)
     const cleaned = validPrompts()
+    const payload = cleaned.map(p => ({ id: p.id, text: p.text }))
     ownWriteUntil.current = Date.now() + 1500
     if (mode === 'new' || !loadedId) {
       if (mode !== 'new') return
-      if (cleaned.length === 0) { if (explicit) setStatus('At least one prompt required'); return }
+      if (cleaned.length === 0) { if (explicit) report('At least one prompt required', true); return }
       const created = await unwrap(window.api.createCard({
-        namespace, prompts: cleaned.map(p => p.text), body, tags: tagsArr
+        namespace, prompts: payload.map(p => p.text), body, tags: tagsArr
       }))
       setLoadedId(created.id)
       setCardPath(created.path)
-      setPrompts(created.prompts.map(p => ({ key: draftKey(), id: p.id, text: p.text })))
-      setStatus('Saved')
+      adoptPromptIds(cleaned, created.prompts)
+      report('Saved')
       setDirty(false)
       setConflict(false)
       await refreshNamespaces()
@@ -112,16 +163,16 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
       else navigate(`/editor/${created.id}`, { replace: true })
       return
     }
-    if (cleaned.length === 0) { if (explicit) setStatus('At least one prompt required'); return }
-    const fresh = await unwrap(window.api.updateCard({ id: loadedId, prompts: cleaned, body, tags: tagsArr }))
+    if (cleaned.length === 0) { if (explicit) report('At least one prompt required', true); return }
+    const fresh = await unwrap(window.api.updateCard({ id: loadedId, prompts: payload, body, tags: tagsArr }))
     setCardPath(fresh.path)
-    setPrompts(fresh.prompts.map(p => ({ key: draftKey(), id: p.id, text: p.text })))
+    adoptPromptIds(cleaned, fresh.prompts)
     if (fresh.namespace !== namespace) {
       const moved = await unwrap(window.api.moveCard({ id: loadedId, namespace }))
       setCardPath(moved.path)
       await refreshNamespaces()
     }
-    setStatus('Saved')
+    report('Saved')
     setDirty(false)
     setConflict(false)
     if (explicit) navigate(`/card/${loadedId}`)
@@ -134,13 +185,12 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     markDirty()
     if (!loadedId) return
     if (conflict) return
-    if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => { void saveRef.current?.(false) }, 2000)
+    armAutosave()
   }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(true) }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); void save(true) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -149,7 +199,9 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
 
   const openExternal = async () => {
     if (!loadedId) return
-    await unwrap(window.api.openInExternalEditor(loadedId))
+    try {
+      await unwrap(window.api.openInExternalEditor(loadedId))
+    } catch (e) { fail(e) }
   }
 
   const remove = async () => {
@@ -157,23 +209,25 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     const confirmed = window.confirm(`Delete this card? This cannot be undone.`)
     if (!confirmed) return
     if (saveTimer.current) { window.clearTimeout(saveTimer.current); saveTimer.current = null }
-    await unwrap(window.api.deleteCard(loadedId))
-    await refreshNamespaces()
-    navigate('/browse')
+    try {
+      await unwrap(window.api.deleteCard(loadedId))
+      await refreshNamespaces()
+      navigate('/browse')
+    } catch (e) { fail(e) }
   }
 
   const ensureCardThenSaveAsset = async (file: File): Promise<string | null> => {
     let targetId = loadedId
     if (!targetId) {
       const cleaned = validPrompts()
-      if (cleaned.length === 0) { setStatus('Add a prompt before pasting images'); return null }
+      if (cleaned.length === 0) { report('Add a prompt before pasting images', true); return null }
       const tagsArr = tags.split(',').map(s => s.trim()).filter(Boolean)
       const created = await unwrap(window.api.createCard({
         namespace, prompts: cleaned.map(p => p.text), body, tags: tagsArr
       }))
       setLoadedId(created.id)
       setCardPath(created.path)
-      setPrompts(created.prompts.map(p => ({ key: draftKey(), id: p.id, text: p.text })))
+      adoptPromptIds(cleaned, created.prompts)
       await refreshNamespaces()
       navigate(`/editor/${created.id}`, { replace: true })
       targetId = created.id
@@ -182,10 +236,10 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
     const bytes = new Uint8Array(await file.arrayBuffer())
     try {
       const res = await unwrap(window.api.saveAsset({ cardId: targetId, bytes, ext }))
-      setStatus('Image saved')
+      report('Image saved')
       return res.relativePath
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : String(e))
+      fail(e)
       return null
     }
   }
@@ -214,7 +268,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
   }
 
   const previewBody = useMemo(() => body, [body])
-  const isError = status.endsWith('required') || status === 'Add a prompt before pasting images'
+  const isError = statusIsError
 
   return (
     <div className="flex flex-col h-full bg-bg">
@@ -238,7 +292,7 @@ export function EditorRoute({ mode }: { mode: 'new' | 'edit' }) {
               <button onClick={() => setPreviewOpen(true)} className="btn !py-1.5 !px-3 !text-[12px]">Preview</button>
               <button onClick={openExternal} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px]">Open externally</button>
               <button onClick={remove} disabled={!loadedId} className="btn !py-1.5 !px-3 !text-[12px] !text-danger hover:!border-danger/60">Delete</button>
-              <button onClick={() => save(true)} className="btn-primary !py-1.5 !px-4 !text-[12px]">
+              <button onClick={() => void save(true)} className="btn-primary !py-1.5 !px-4 !text-[12px]">
                 Save <span className="kbd !bg-white/20 !border-white/25 !text-white !shadow-none !h-[1.1rem] !text-[10px]">⌘S</span>
               </button>
             </div>

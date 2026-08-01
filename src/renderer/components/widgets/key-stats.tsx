@@ -11,7 +11,7 @@ export function KeyStatsWidget({ data }: { data: NonNullable<DashboardData['keyS
       <div className="eyebrow mb-4">Library</div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-5">
         {stat(data.total, 'Total', 0)}
-        {stat(`${Math.round(data.retention * 100)}%`, 'Retention', 1, true)}
+        {stat(data.retention === null ? '—' : `${Math.round(data.retention * 100)}%`, 'Retention', 1, true)}
         {stat(data.struggling, 'Struggling', 2)}
         {stat(data.mastered, 'Mastered', 3)}
       </div>

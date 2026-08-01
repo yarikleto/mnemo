@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CardFull, PromptFrontmatter } from '../../shared/schema'
 import type { DueCard } from '../../shared/api'
@@ -23,33 +23,55 @@ export function ReviewRoute() {
   const [current, setCurrent] = useState<{ card: CardFull; prompt: PromptFrontmatter } | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [sessionCounts, setSessionCounts] = useState({ reviewed: 0, again: 0 })
+  const [error, setError] = useState<string | null>(null)
+  // Guards double-submits: the queue only advances once rateReview resolves, so
+  // a fast "1 1" (or a double-click) would otherwise rate the visible card twice
+  // and drop the card behind it unseen.
+  const rating = useRef(false)
 
   const loadQueue = useCallback(async () => {
-    const q = await unwrap(window.api.getDueQueue({ namespaces: selectedNamespaces }))
-    setQueue(q)
-    setInitialQueueLen(q.length)
+    try {
+      const q = await unwrap(window.api.getDueQueue({ namespaces: selectedNamespaces }))
+      setQueue(q)
+      setInitialQueueLen(q.length)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }, [selectedNamespaces])
 
-  useEffect(() => { loadQueue() }, [loadQueue])
+  useEffect(() => { void loadQueue() }, [loadQueue])
 
   useEffect(() => {
     if (!queue.length) { setCurrent(null); return }
     const head = queue[0]!
     let alive = true
-    unwrap(window.api.readCard(head.cardId)).then(card => {
-      if (!alive) return
-      const prompt = card.prompts[Math.floor(Math.random() * card.prompts.length)]!
-      setCurrent({ card, prompt })
-    })
+    unwrap(window.api.readCard(head.cardId))
+      .then(card => {
+        if (!alive) return
+        const prompt = card.prompts[Math.floor(Math.random() * card.prompts.length)]!
+        setCurrent({ card, prompt })
+      })
+      // A card deleted or corrupted mid-session must not wedge the session on a
+      // card that can no longer be read — drop it and move to the next one.
+      .catch(() => { if (alive) setQueue(q => q.slice(1)) })
     setRevealed(false)
     return () => { alive = false }
   }, [queue])
 
-  const rate = useCallback(async (rating: Rating) => {
-    if (!current) return
-    await unwrap(window.api.rateReview({ cardId: current.card.id, rating }))
-    setSessionCounts(c => ({ reviewed: c.reviewed + 1, again: c.again + (rating === 'Again' ? 1 : 0) }))
-    setQueue(q => q.slice(1))
+  const rate = useCallback(async (grade: Rating) => {
+    if (!current || rating.current) return
+    rating.current = true
+    try {
+      await unwrap(window.api.rateReview({ cardId: current.card.id, rating: grade }))
+      setError(null)
+      setSessionCounts(c => ({ reviewed: c.reviewed + 1, again: c.again + (grade === 'Again' ? 1 : 0) }))
+      setQueue(q => q.slice(1))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      rating.current = false
+    }
   }, [current])
 
   useEffect(() => {
@@ -75,6 +97,19 @@ export function ReviewRoute() {
   }, [current])
 
   if (!current) {
+    // A failed queue load leaves `current` null too — without this the user is
+    // told "nothing due" when the truth is that nothing could be read.
+    if (error) {
+      return (
+        <div className="h-full flex items-center justify-center px-6">
+          <div className="text-center max-w-md animate-fade-in-up" role="alert">
+            <h2 className="font-editorial text-2xl font-semibold mb-2">Couldn’t load your review queue.</h2>
+            <p className="text-muted text-[13px] leading-relaxed mb-5">{error}</p>
+            <button onClick={() => void loadQueue()} className="btn">Try again</button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="h-full flex items-center justify-center px-6">
         <div className="text-center max-w-md animate-fade-in-up">
@@ -122,6 +157,9 @@ export function ReviewRoute() {
               <MarkdownView content={current.card.body} basePath={current.card.path} />
               <div className="mt-14 pt-8 border-t border-border">
                 <div className="eyebrow mb-3">How well did you recall?</div>
+                {error && (
+                  <div role="alert" className="chip-error mb-3 inline-block">{error}</div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {RATINGS.map((r, i) => (
                     <button

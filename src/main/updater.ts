@@ -21,7 +21,11 @@ const POLL_INTERVAL_MS = 6 * 60 * 60 * 1000
 
 let started = false
 
-export function startAutoUpdater(win: BrowserWindow, getConfig: () => Config): void {
+// A getter rather than a window instance: the polling loop and the
+// update-downloaded listener outlive any single BrowserWindow (macOS lets the
+// last window close while the process stays alive), so holding a reference here
+// would send the banner to a destroyed window after the user reopens one.
+export function startAutoUpdater(getWindow: () => BrowserWindow | null, getConfig: () => Config): void {
   // Inert in dev — `npm run dev` should never hit GitHub Releases. Same in
   // unpackaged test runs. The `app.isPackaged` flag is the canonical gate.
   if (!app.isPackaged) return
@@ -29,7 +33,8 @@ export function startAutoUpdater(win: BrowserWindow, getConfig: () => Config): v
   started = true
 
   autoUpdater.on('update-downloaded', (info) => {
-    if (win.isDestroyed()) return
+    const win = getWindow()
+    if (!win || win.isDestroyed()) return
     win.webContents.send('update:ready', { version: info?.version ?? 'unknown' })
   })
   autoUpdater.on('error', (err) => log.error('[updater] error', err))

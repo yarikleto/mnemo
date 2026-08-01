@@ -51,9 +51,17 @@ export function isValidNamespace(ns: string): boolean {
   return NamespaceSchema.safeParse(ns).success
 }
 
+// A prompt that is only whitespace serialises to an empty YAML block scalar,
+// which parses back as '' and fails this very schema — the card lands on disk
+// and then silently drops out of the index. Reject it at the boundary instead.
+export const PromptTextSchema = z.string().refine(
+  s => s.trim().length > 0,
+  'Prompt text cannot be blank'
+)
+
 export const PromptFrontmatterSchema = z.object({
   id: UlidSchema,
-  text: z.string().min(1)
+  text: PromptTextSchema
 })
 export type PromptFrontmatter = z.infer<typeof PromptFrontmatterSchema>
 

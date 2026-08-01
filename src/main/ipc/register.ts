@@ -15,8 +15,9 @@ import { importArchive } from '../archive/import'
 import { patchConfig } from '../store/config'
 import { configPath, cardsDir, defaultRootPath } from '../paths'
 import { ulid } from '../id'
-import { logFilePath } from '../log'
-import { validateNamespace, type Config, type PromptFrontmatter } from '../../shared/schema'
+import { mapWithConcurrency } from '../concurrency'
+import log, { logFilePath } from '../log'
+import { validateNamespace, PromptTextSchema, type Config, type PromptFrontmatter } from '../../shared/schema'
 import type { ReviewState } from '../../shared/schema'
 import type { CardIndex } from '../store/index'
 import type { Watcher } from '../watcher'
@@ -102,7 +103,7 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('createCard', z.object({
     namespace: z.string(),
-    prompts: z.array(z.string().min(1)).min(1),
+    prompts: z.array(PromptTextSchema).min(1),
     body: z.string(),
     tags: z.array(z.string()).optional()
   }), async (input) => {
@@ -117,7 +118,7 @@ export function registerIpc(ctx: Ctx): () => void {
 
   h('updateCard', z.object({
     id: z.string(),
-    prompts: z.array(z.object({ id: z.string().optional(), text: z.string().min(1) })).min(1).optional(),
+    prompts: z.array(z.object({ id: z.string().optional(), text: PromptTextSchema })).min(1).optional(),
     body: z.string().optional(),
     tags: z.array(z.string()).optional()
   }), async (input) => {
@@ -334,10 +335,15 @@ export function registerIpc(ctx: Ctx): () => void {
     ctx.watcher.off('card-removed', onRemoved)
   })
 
-  // Orphan state cleanup on startup: any state keyed by an unknown card id gets removed.
-  listStateIds(ctx.getConfig().rootPath).then(ids => {
-    for (const id of ids) if (!ctx.index.get(id)) deleteState(ctx.getConfig().rootPath, id)
-  })
+  // Orphan state cleanup on startup: any state keyed by an unknown card id gets
+  // removed. Fire-and-forget, but every rejection has to be swallowed here — an
+  // unhandled one from an unreadable state/ directory takes down the main process.
+  void (async () => {
+    const rootPath = ctx.getConfig().rootPath
+    if (!rootPath) return
+    const ids = await listStateIds(rootPath)
+    await Promise.all(ids.map(id => ctx.index.get(id) ? undefined : deleteState(rootPath, id)))
+  })().catch(e => log.warn('orphan state cleanup failed', e))
 
   return ipc.dispose
 }
@@ -345,41 +351,46 @@ export function registerIpc(ctx: Ctx): () => void {
 async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<DashboardData> {
   const cfg = ctx.getConfig()
   const rootPath = cfg.rootPath
-  const all = ctx.index.all()
-  const cards: Array<{ cardId: string; namespace: string; firstPromptText: string; state: ReviewState }> = []
-  for (const card of all) {
-    const state = await readState(rootPath, card.id)
-    cards.push({ cardId: card.id, namespace: card.namespace, firstPromptText: card.prompts[0]?.text ?? '', state })
-  }
+  const cards = await mapWithConcurrency(ctx.index.all(), async card => ({
+    cardId: card.id,
+    namespace: card.namespace,
+    firstPromptText: card.prompts[0]?.text ?? '',
+    state: await readState(rootPath, card.id)
+  }))
   const result: DashboardData = {}
 
-  const dayKey = (d: Date) => d.toISOString().slice(0, 10)
-
   if (widgets.includes('due-forecast')) {
-    const now = Date.now()
-    const todayKey = dayKey(new Date())
+    // Bucket by local calendar day, not by rolling 24h windows: the widget
+    // labels these "+1 … +7", and a card due tomorrow at 23:00 belongs in +1
+    // even though it is 46 hours out.
+    const now = new Date()
+    const today = startOfLocalDay(now)
     const next7: number[] = Array(7).fill(0)
-    let today = 0
+    let dueToday = 0
     for (const { state } of cards) {
-      const due = new Date(state.due).getTime()
-      const diffDays = Math.floor((due - now) / 86_400_000)
-      if (due <= now || dayKey(new Date(due)) === todayKey) today++
-      else if (diffDays >= 0 && diffDays < 7) next7[diffDays]! += 1
+      const due = new Date(state.due)
+      const offset = Math.round((startOfLocalDay(due).getTime() - today.getTime()) / 86_400_000)
+      if (offset <= 0) dueToday++
+      else if (offset <= 7) next7[offset - 1]! += 1
     }
-    result.dueForecast = { today, next7Days: next7 }
+    result.dueForecast = { today: dueToday, next7Days: next7 }
   }
 
   if (widgets.includes('namespace-ranking')) {
-    const byNs = new Map<string, { total: number; sumRetention: number; count: number }>()
+    const byNs = new Map<string, { total: number; sumRetention: number; reviewed: number }>()
     for (const { namespace, state } of cards) {
       const k = namespace || '(root)'
+      const cur = byNs.get(k) ?? { total: 0, sumRetention: 0, reviewed: 0 }
+      cur.total++
       const r = retention(state)
-      const cur = byNs.get(k) ?? { total: 0, sumRetention: 0, count: 0 }
-      cur.total++; cur.sumRetention += r; cur.count++
+      if (r !== null) { cur.sumRetention += r; cur.reviewed++ }
       byNs.set(k, cur)
     }
+    // A namespace nobody has reviewed yet isn't weak, it's unmeasured — ranking
+    // it at 0% put every fresh deck at the top of "Weakest namespaces".
     result.namespaceRanking = Array.from(byNs.entries())
-      .map(([namespace, v]) => ({ namespace, retention: v.count ? v.sumRetention / v.count : 0, count: v.total }))
+      .filter(([, v]) => v.reviewed > 0)
+      .map(([namespace, v]) => ({ namespace, retention: v.sumRetention / v.reviewed, count: v.total }))
       .sort((a, b) => a.retention - b.retention)
   }
 
@@ -400,37 +411,56 @@ async function computeDashboard(ctx: Ctx, widgets: WidgetId[]): Promise<Dashboar
   }
 
   if (widgets.includes('activity-streak')) {
+    // Review timestamps are stored in UTC but the user experiences days locally;
+    // keying off the ISO prefix shifted every review for anyone not near UTC.
     const byDay = new Map<string, number>()
     for (const { state } of cards) for (const h of state.history) {
-      const k = h.ts.slice(0, 10)
+      const k = localDayKey(new Date(h.ts))
       byDay.set(k, (byDay.get(k) ?? 0) + 1)
     }
+    const today = startOfLocalDay(new Date())
     const days: Array<{ date: string; count: number }> = []
     for (let i = 89; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86_400_000)
-      const k = dayKey(d)
-      days.push({ date: k, count: byDay.get(k) ?? 0 })
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      days.push({ date: localDayKey(d), count: byDay.get(localDayKey(d)) ?? 0 })
     }
+    // Today is still in progress, so an empty today doesn't end the streak —
+    // otherwise a 40-day streak read as 0 until the first review of the morning.
+    let i = days.length - 1
+    if (days[i]?.count === 0) i--
     let streak = 0
-    for (let i = days.length - 1; i >= 0; i--) { if (days[i]!.count > 0) streak++; else break }
+    for (; i >= 0; i--) { if (days[i]!.count > 0) streak++; else break }
     const total = Array.from(byDay.values()).reduce((a, b) => a + b, 0)
     result.activityStreak = { days, currentStreak: streak, total }
   }
 
   if (widgets.includes('key-stats')) {
-    const total = cards.length
-    const retentions = cards.map(c => retention(c.state))
-    const avg = retentions.length ? retentions.reduce((a, b) => a + b, 0) / retentions.length : 0
-    const struggling = cards.filter(c => c.state.lapses >= 3 || c.state.state === 'Relearning').length
-    const mastered = cards.filter(c => c.state.stability >= 30 && c.state.reps >= 4).length
-    result.keyStats = { total, retention: avg, struggling, mastered }
+    const retentions = cards.map(c => retention(c.state)).filter((r): r is number => r !== null)
+    const avg = retentions.length ? retentions.reduce((a, b) => a + b, 0) / retentions.length : null
+    result.keyStats = {
+      total: cards.length,
+      retention: avg,
+      struggling: cards.filter(c => c.state.lapses >= 3 || c.state.state === 'Relearning').length,
+      mastered: cards.filter(c => c.state.stability >= 30 && c.state.reps >= 4).length
+    }
   }
 
   return result
 }
 
-function retention(s: ReviewState): number {
-  if (s.reps === 0) return 0
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+function localDayKey(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Recall rate across a card's reviews, or null when it has never been reviewed. */
+export function retention(s: ReviewState): number | null {
+  if (s.reps === 0 || s.history.length === 0) return null
   const retries = s.history.filter(h => h.rating === 'Again').length
-  return Math.max(0, Math.min(1, 1 - retries / Math.max(1, s.history.length)))
+  return Math.max(0, Math.min(1, 1 - retries / s.history.length))
 }

@@ -80,7 +80,17 @@ function NumberField({ value, onChange, step = 1, min, max, ariaLabel }: {
 export function SettingsRoute() {
   const { config } = useAppStore()
   const [local, setLocal] = useState<Config | null>(config)
+  const editorTimer = useRef<number | null>(null)
+  const pendingEditor = useRef<string | null | undefined>(undefined)
   useEffect(() => { setLocal(config) }, [config])
+  // Flush, don't drop: navigating away inside the debounce window would
+  // otherwise silently discard what the user just typed.
+  useEffect(() => () => {
+    if (editorTimer.current === null) return
+    window.clearTimeout(editorTimer.current)
+    if (pendingEditor.current === undefined) return
+    void window.api.updateConfig({ externalEditor: pendingEditor.current })
+  }, [])
   if (!local) return <div className="p-10 text-muted italic font-editorial">Loading…</div>
 
   const toggle = async (id: WidgetId) => {
@@ -106,9 +116,18 @@ export function SettingsRoute() {
     const cfg = await unwrap(window.api.updateConfig({ fsrs: { ...local.fsrs, ...patch } }))
     setLocal(cfg); useAppStore.setState({ config: cfg })
   }
-  const setExternalEditor = async (s: string) => {
-    const cfg = await unwrap(window.api.updateConfig({ externalEditor: s || null }))
-    setLocal(cfg); useAppStore.setState({ config: cfg })
+  // Debounced: this used to atomically rewrite config.json on every keystroke.
+  const setExternalEditor = (s: string) => {
+    const next = s || null
+    pendingEditor.current = next
+    setLocal(prev => prev ? { ...prev, externalEditor: next } : prev)
+    if (editorTimer.current !== null) window.clearTimeout(editorTimer.current)
+    editorTimer.current = window.setTimeout(async () => {
+      editorTimer.current = null
+      const cfg = await unwrap(window.api.updateConfig({ externalEditor: next }))
+      pendingEditor.current = undefined
+      setLocal(cfg); useAppStore.setState({ config: cfg })
+    }, 400)
   }
   const setAutoUpdate = async (enabled: boolean) => {
     const cfg = await unwrap(window.api.updateConfig({ autoUpdate: { enabled } }))

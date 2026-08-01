@@ -4,7 +4,8 @@ import { promptPreview } from '../../../shared/prompt'
 
 export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatmap']> }) {
   const navigate = useNavigate()
-  const color = (r: number) => {
+  const color = (r: number | null) => {
+    if (r === null) return 'bg-border/70'
     if (r > 0.85) return 'bg-emerald-600/90'
     if (r > 0.65) return 'bg-emerald-400/90'
     if (r > 0.45) return 'bg-amber-400/90'
@@ -15,6 +16,8 @@ export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatm
       <div className="flex items-center justify-between mb-4">
         <div className="eyebrow">Retention heatmap</div>
         <div className="flex items-center gap-2 text-[11px] text-muted" aria-label="Legend: red for weak retention, green for strong">
+          <span className="w-3 h-3 rounded-sm bg-border/70" />
+          <span className="mr-1">new</span>
           <span>weak</span>
           <span className="flex gap-0.5">
             <span className="w-3 h-3 rounded-sm bg-rose-500/90" />
@@ -27,7 +30,7 @@ export function HeatmapWidget({ data }: { data: NonNullable<DashboardData['heatm
       </div>
       <div className="flex flex-wrap gap-1">
         {data.map((c, i) => {
-          const tip = `${promptPreview(c.promptText, 80)} · ${Math.round(c.retention * 100)}%`
+          const tip = `${promptPreview(c.promptText, 80)} · ${c.retention === null ? 'not reviewed yet' : `${Math.round(c.retention * 100)}%`}`
           return (
             <button key={c.cardId} type="button" onClick={() => navigate(`/card/${c.cardId}`)}
                     title={tip} aria-label={tip}

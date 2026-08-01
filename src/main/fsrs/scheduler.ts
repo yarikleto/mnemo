@@ -67,7 +67,9 @@ export function rateCard(
     last_review: now.toISOString(),
     history: [
       ...state.history,
-      { ts: now.toISOString(), rating, elapsed_days: state.elapsed_days }
+      // next.elapsed_days is the gap this review actually closed. state.elapsed_days
+      // is the gap of the *previous* review, which shifted every entry by one.
+      { ts: now.toISOString(), rating, elapsed_days: next.elapsed_days }
     ]
   }
 }

@@ -8,7 +8,8 @@ import { registerIpc } from './ipc/register'
 import { installAppMenu } from './menu'
 import { startAutoUpdater, setupUpdaterIpc } from './updater'
 import { restoreWindowState, bindWindowStateSaver } from './window-state'
-import { configPath, defaultRootPath } from './paths'
+import { cardsDir, configPath, defaultRootPath } from './paths'
+import type { Config } from '../shared/schema'
 import log, { configureLog } from './log'
 
 app.setName('Mnemo')
@@ -55,10 +56,56 @@ const CSP = [
   "frame-src 'none'",
 ].join('; ')
 
+// Process-scoped state. The vault index, the chokidar watcher and the
+// mnemo-asset handler are all singletons for the lifetime of the process — a
+// second set would race the first, which is the same hazard the single-instance
+// lock guards against. createWindow() may run more than once (macOS `activate`
+// after the last window is closed), so bootstrap them exactly once here.
+type Vault = { getConfig: () => Config; setConfig: (c: Config) => void; index: CardIndex; watcher: Watcher }
+let vaultPromise: Promise<Vault> | null = null
+
+function bootstrapVault(): Promise<Vault> {
+  vaultPromise ??= (async () => {
+    const userDataPath = app.getPath('userData')
+    let config = await loadConfig(configPath(userDataPath), defaultRootPath(userDataPath))
+    const index = new CardIndex()
+    // When a fresh install hasn't completed onboarding yet, rootPath is the empty
+    // sentinel — skip building the index and starting chokidar; the watcher
+    // and index get bootstrapped by completeOnboarding once the app-data vault is created.
+    if (config.rootPath) await index.buildFrom(config.rootPath)
+    const watcher = new Watcher(config.rootPath, index)
+    if (config.rootPath) watcher.start()
+
+    protocol.handle('mnemo-asset', (req) => {
+      // Pre-onboarding rootPath is the empty sentinel; path.resolve('') would fall
+      // back to process.cwd() (often "/" for a Finder-launched app), which turns
+      // the containment check below into a no-op and serves any file on disk.
+      if (!config.rootPath) return new Response('forbidden', { status: 403 })
+      const url = new URL(req.url)
+      const decoded = decodeURIComponent(url.pathname)
+      const abs = path.resolve(decoded)
+      // Assets only ever live beside a card, so scope reads to cards/ rather than
+      // the whole vault — state/ and config never need to be reachable this way.
+      const root = path.resolve(cardsDir(config.rootPath))
+      const rel = path.relative(root, abs)
+      if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
+        return new Response('forbidden', { status: 403 })
+      }
+      return net.fetch(pathToFileURL(abs).toString())
+    })
+
+    return { getConfig: () => config, setConfig: (c: Config) => { config = c }, index, watcher }
+  })()
+  return vaultPromise
+}
+
+let cspInstalled = false
+
 async function createWindow() {
   // Skip CSP in dev: Vite injects an inline preamble for @vitejs/plugin-react,
   // which `script-src 'self'` blocks, and the renderer fails to mount.
-  if (!process.env.VITE_DEV_SERVER_URL) {
+  if (!process.env.VITE_DEV_SERVER_URL && !cspInstalled) {
+    cspInstalled = true
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
@@ -68,6 +115,8 @@ async function createWindow() {
       })
     })
   }
+
+  const vault = await bootstrapVault()
 
   const restore = restoreWindowState()
   const win = new BrowserWindow({
@@ -87,41 +136,20 @@ async function createWindow() {
   if (restore.fullscreen) win.setFullScreen(true)
   bindWindowStateSaver(win)
 
-  const userDataPath = app.getPath('userData')
-  let config = await loadConfig(configPath(userDataPath), defaultRootPath(userDataPath))
-  const index = new CardIndex()
-  // When a fresh install hasn't completed onboarding yet, rootPath is the empty
-  // sentinel — skip building the index and starting chokidar; the watcher
-  // and index get bootstrapped by completeOnboarding once the app-data vault is created.
-  if (config.rootPath) await index.buildFrom(config.rootPath)
-  const watcher = new Watcher(config.rootPath, index)
-  if (config.rootPath) watcher.start()
-
-  protocol.handle('mnemo-asset', (req) => {
-    const url = new URL(req.url)
-    const decoded = decodeURIComponent(url.pathname)
-    const abs = path.resolve(decoded)
-    const root = path.resolve(config.rootPath)
-    const rel = path.relative(root, abs)
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
-      return new Response('forbidden', { status: 403 })
-    }
-    return net.fetch(pathToFileURL(abs).toString())
-  })
-
+  const config = () => vault.getConfig()
   const disposeIpc = registerIpc({
-    getConfig: () => config,
-    setConfig: (c) => { config = c },
-    index,
-    watcher,
+    getConfig: config,
+    setConfig: vault.setConfig,
+    index: vault.index,
+    watcher: vault.watcher,
     win
   })
 
   installAppMenu(win)
   const disposeUpdaterIpc = setupUpdaterIpc(win)
-  startAutoUpdater(win, () => config)
-
   mainWindow = win
+  startAutoUpdater(() => mainWindow, config)
+
   win.on('closed', () => {
     disposeUpdaterIpc()
     disposeIpc()
@@ -137,3 +165,11 @@ async function createWindow() {
 
 if (gotLock) app.whenReady().then(createWindow).catch(e => log.error('createWindow failed', e))
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
+
+// macOS keeps the app alive after its last window closes. Without this the app
+// sits in the Dock with no window and no way to get one back.
+app.on('activate', () => {
+  if (!gotLock) return
+  if (BrowserWindow.getAllWindows().length > 0) return
+  createWindow().catch(e => log.error('createWindow failed', e))
+})

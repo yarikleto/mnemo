@@ -1,4 +1,5 @@
 import { readState } from '../store/state'
+import { mapWithConcurrency } from '../concurrency'
 import type { CardIndex } from '../store/index'
 import type { DueCard } from '../../shared/api'
 
@@ -9,15 +10,17 @@ export async function buildDueQueue(
 ): Promise<DueCard[]> {
   const now = (opts.now ?? new Date()).getTime()
   const wantedPrefixes = opts.namespaces?.length ? opts.namespaces : null
-  const result: Array<{ entry: DueCard; due: number }> = []
-  for (const card of index.all()) {
-    if (wantedPrefixes && !wantedPrefixes.some(p => card.namespace === p || card.namespace.startsWith(p + '/'))) continue
+  const cards = index.all().filter(card =>
+    !wantedPrefixes || wantedPrefixes.some(p => card.namespace === p || card.namespace.startsWith(p + '/'))
+  )
+  // One state file per card. Reading them serially made the sidebar's namespace
+  // refresh — which fires on every rating — an O(n) chain of round trips.
+  const rows = await mapWithConcurrency(cards, async card => {
     const st = await readState(rootPath, card.id)
-    const due = new Date(st.due).getTime()
-    if (due <= now) result.push({
-      entry: { cardId: card.id, namespace: card.namespace, tags: card.tags },
-      due
-    })
-  }
-  return result.sort((a, b) => a.due - b.due).map(r => r.entry)
+    return { card, due: new Date(st.due).getTime() }
+  })
+  return rows
+    .filter(r => r.due <= now)
+    .sort((a, b) => a.due - b.due)
+    .map(r => ({ cardId: r.card.id, namespace: r.card.namespace, tags: r.card.tags }))
 }

@@ -44,7 +44,7 @@ export function serializeCardFile(frontmatter: CardFrontmatter, body: string): s
     lines.push('tags: []')
   } else {
     lines.push('tags:')
-    for (const t of frontmatter.tags) lines.push(`  - ${yamlSingleQuoted(t)}`)
+    for (const t of frontmatter.tags) lines.push(`  - ${yamlScalar(t)}`)
   }
   lines.push(`created: '${frontmatter.created}'`)
   lines.push('---')
@@ -53,16 +53,30 @@ export function serializeCardFile(frontmatter: CardFrontmatter, body: string): s
   return `${prefix}\n${body.endsWith('\n') ? body : body + '\n'}`
 }
 
+// Indentation of a block scalar's content, relative to its parent mapping key
+// (`    text:` sits at column 4, content lines at column 6).
+const BLOCK_INDENT = 2
+const BLOCK_PAD = ' '.repeat(4 + BLOCK_INDENT)
+
 function renderPrompt(p: PromptFrontmatter): string[] {
   const head = `  - id: ${p.id}`
-  if (p.text.includes('\n')) {
-    const out = [head, '    text: |-']
-    for (const line of p.text.replace(/\n+$/, '').split('\n')) out.push(`      ${line}`)
-    return out
-  }
-  return [head, `    text: ${yamlSingleQuoted(p.text)}`]
+  if (!/[\r\n]/.test(p.text)) return [head, `    text: ${yamlScalar(p.text)}`]
+
+  // A block scalar without an explicit indentation indicator takes its indent
+  // from the first content line, so a prompt starting with whitespace ("  def
+  // foo():") makes every subsequent, less-indented line a YAML syntax error and
+  // the card silently drops out of the index. `|2-` pins the indent up front.
+  const out = [head, `    text: |${BLOCK_INDENT}-`]
+  const text = p.text.replace(/\r\n?/g, '\n').replace(/\n+$/, '')
+  for (const line of text.split('\n')) out.push(line === '' ? '' : `${BLOCK_PAD}${line}`)
+  return out
 }
 
-function yamlSingleQuoted(s: string): string {
+// Single-quoted YAML can't carry line breaks or control characters at this
+// indentation, so fall back to a double-quoted scalar (JSON's escaping is a
+// strict subset of YAML's) whenever the value isn't plain text.
+function yamlScalar(s: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f]/.test(s)) return JSON.stringify(s)
   return `'${s.replace(/'/g, "''")}'`
 }

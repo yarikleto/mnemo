@@ -15,13 +15,15 @@ export type DueCard = {
   tags: string[]
 }
 
+// `retention: null` means "never reviewed" — distinct from a measured 0%, which
+// would otherwise rank untouched decks as the weakest ones.
 export type DashboardData = Partial<{
   dueForecast: { today: number; next7Days: number[] }
   namespaceRanking: Array<{ namespace: string; retention: number; count: number }>
   leechList: Array<{ cardId: string; promptText: string; lapses: number; namespace: string }>
-  heatmap: Array<{ cardId: string; promptText: string; retention: number; namespace: string }>
+  heatmap: Array<{ cardId: string; promptText: string; retention: number | null; namespace: string }>
   activityStreak: { days: Array<{ date: string; count: number }>; currentStreak: number; total: number }
-  keyStats: { total: number; retention: number; struggling: number; mastered: number }
+  keyStats: { total: number; retention: number | null; struggling: number; mastered: number }
 }>
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }
